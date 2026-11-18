@@ -429,6 +429,17 @@
         icon: "🔫",
         versions: [
           {
+            version: "1.0.0", date: "2026-11-18", title: "Player Mode",
+            changes: [
+              { type: "new", text: "Added optional player control. Press P to take over a soldier or vehicle, and Esc or P to return to spectating." },
+              { type: "new", text: "Added controls for soldiers (WASD, sprint, mouse aim, fire, secondary weapons, class switching) and vehicles (tank, truck, bike, helicopter, jet)." },
+              { type: "new", text: "Added F to enter or exit friendly ground vehicles, B to choose the team P selects from, and a player HUD with crosshair, health bar and hit indicator." },
+              { type: "change", text: "Spectator camera now follows the player's unit smoothly while you are in control." },
+              { type: "fix", text: "Fixed the player losing control with no feedback when their unit is destroyed; a redeploy prompt now appears." },
+              { type: "remove", text: "Removed nothing in this update." }
+            ]
+          },
+          {
             version: "0.9.0", date: "2026-11-12", title: "Armor Update",
             changes: [
               { type: "new", text: "Added tanks and a transport helicopter." },
