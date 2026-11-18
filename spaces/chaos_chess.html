@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chaos Chess — 400 ELO Bot + 30 Modifiers</title>
+<title>Chaos Chess — 200 / 400 / 800 ELO Bots + 30 Modifiers</title>
 <style>
   :root {
     --bg: #0f1117;
@@ -218,6 +218,56 @@
     right: 2px;
   }
 
+  /* Effects layer: explosions + dust clouds */
+  .fx-layer { position: absolute; inset: 0; pointer-events: none; z-index: 20; }
+  .fx { position: absolute; width: 12.5%; height: 12.5%; pointer-events: none; }
+  .fx-flash {
+    position: absolute; inset: 14%; border-radius: 50%;
+    background: radial-gradient(circle, #fff 0%, #fde047 30%, #f97316 62%, rgba(239,68,68,0) 72%);
+    animation: fxFlash 0.5s ease-out forwards;
+  }
+  @keyframes fxFlash {
+    0% { transform: scale(0.2); opacity: 1; }
+    55% { opacity: 0.95; }
+    100% { transform: scale(1.9); opacity: 0; }
+  }
+  .fx-ring {
+    position: absolute; inset: 20%; border-radius: 50%;
+    border: 3px solid rgba(255, 200, 80, 0.9);
+    animation: fxRing 0.5s ease-out forwards;
+  }
+  @keyframes fxRing {
+    0% { transform: scale(0.3); opacity: 1; }
+    100% { transform: scale(2); opacity: 0; }
+  }
+  .fx-spark {
+    position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px;
+    border-radius: 50%; background: #fbbf24; box-shadow: 0 0 6px #f97316;
+    animation: fxSpark 0.55s ease-out forwards;
+  }
+  @keyframes fxSpark {
+    0% { transform: rotate(var(--a)) translateX(0) scale(1); opacity: 1; }
+    100% { transform: rotate(var(--a)) translateX(var(--d)) scale(0.3); opacity: 0; }
+  }
+  .fx-puff {
+    position: absolute; left: 50%; top: 50%; width: 46%; height: 46%; margin: -23% 0 0 -23%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(226,214,190,0.9) 0%, rgba(190,176,150,0.65) 55%, rgba(190,176,150,0) 75%);
+    animation: fxPuff 0.7s ease-out both;
+  }
+  @keyframes fxPuff {
+    0% { transform: translate(0, 0) scale(0.3); opacity: 0.9; }
+    100% { transform: translate(var(--dx), var(--dy)) scale(1.15); opacity: 0; }
+  }
+  .piece.spawning .piece-glyph { animation: pieceSpawn 0.4s ease-out; }
+  @keyframes pieceSpawn {
+    0% { transform: scale(0.2); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  button.elo-btn { min-width: 0; padding: 8px 4px; line-height: 1.25; }
+  button.elo-btn small { font-weight: 500; opacity: 0.75; }
+  button.elo-btn.active { background: var(--accent); color: #000; }
+
   /* Side Panel */
   .sidebar {
     flex: 1;
@@ -354,7 +404,7 @@
 <body>
 
 <header>
-  <h1>⚡ CHAOS CHESS (400 ELO BOT)</h1>
+  <h1 id="gameTitle">⚡ CHAOS CHESS (400 ELO BOT)</h1>
   <p>Capture the enemy King 3 times to win • 30 Random Modifiers trigger every 3 turns</p>
 </header>
 
@@ -362,6 +412,7 @@
   <div class="board-wrap" id="boardWrap">
     <div class="board-grid" id="boardGrid"></div>
     <div class="pieces-layer" id="piecesLayer"></div>
+    <div class="fx-layer" id="fxLayer"></div>
   </div>
 
   <div class="sidebar">
@@ -372,7 +423,7 @@
           <div class="hearts" id="whiteHearts">❤️❤️❤️</div>
         </div>
         <div class="score-box">
-          <h3>BOT ~400 (BLACK)</h3>
+          <h3 id="botLabel">BOT ~400 (BLACK)</h3>
           <div class="hearts" id="blackHearts">❤️❤️❤️</div>
         </div>
       </div>
@@ -390,6 +441,15 @@
     <div class="card">
       <h4 style="font-size:0.85rem; color:var(--muted); margin-bottom:8px;">BATTLE & CHAOS LOG</h4>
       <div class="log" id="eventLog"></div>
+    </div>
+
+    <div class="card">
+      <h4 style="font-size:0.85rem; color:var(--muted); margin-bottom:8px;">BOT DIFFICULTY</h4>
+      <div class="controls" id="eloRow">
+        <button class="secondary elo-btn" data-elo="200" onclick="setBotElo(200)">200 ELO<br><small>Beginner</small></button>
+        <button class="secondary elo-btn active" data-elo="400" onclick="setBotElo(400)">400 ELO<br><small>Casual</small></button>
+        <button class="secondary elo-btn" data-elo="800" onclick="setBotElo(800)">800 ELO<br><small>Tricky</small></button>
+      </div>
     </div>
 
     <div class="controls">
@@ -454,6 +514,8 @@ let halfMoves = 0;
 let gameOver = false;
 
 let kingLives = { w: 3, b: 3 };
+let botElo = 400;
+let suppressFx = false;
 let historyStack = [];
 
 // Chaos Effect States
@@ -612,6 +674,7 @@ const MODIFIERS = [
           sq.classList.add('tile-airstrike');
         }
         if (board[r][c]) {
+          spawnFx('boom', r, c);
           logEvent(`💥 Air Raid destroyed ${board[r][c].color.toUpperCase()} ${board[r][c].type} at ${coordName(r, c)}!`, true);
           board[r][c] = null;
         }
@@ -769,6 +832,7 @@ const MODIFIERS = [
       shuffle(mid);
       mid.slice(0, 2).forEach(([r, c]) => {
         if (!board[r][c] || board[r][c].type !== 'K') {
+          if (board[r][c]) spawnFx('boom', r, c);
           board[r][c] = null;
           lavaTiles.add(`${r},${c}`);
         }
@@ -930,6 +994,11 @@ function render() {
         el.innerHTML = `<span class="piece-glyph"></span>`;
         layer.appendChild(el);
         pieceElements.set(p.id, el);
+        if (!suppressFx) {
+          el.classList.add('spawning');
+          setTimeout(() => el.classList.remove('spawning'), 450);
+          spawnFx('dust', r, c);
+        }
       }
       const glyphEl = el.querySelector('.piece-glyph');
       const sig = `${p.color}-${p.type}`;
@@ -1120,6 +1189,7 @@ function executeMove(fr, fc, tr, tc, isBonusJump = false) {
 
   // Handle Capture & King 3-Life Rule
   if (target) {
+    spawnFx('boom', destR, destC);
     if (target.type === 'K') {
       kingLives[target.color]--;
       logEvent(`👑 ${mover.color === 'w' ? 'WHITE' : 'BLACK'} CAPTURED THE KING! (${kingLives[target.color]} lives left)`, true);
@@ -1185,6 +1255,7 @@ function executeMove(fr, fc, tr, tc, isBonusJump = false) {
   const destKey = `${destR},${destC}`;
   if (landmines.has(destKey)) {
     landmines.delete(destKey);
+    spawnFx('boom', destR, destC);
     if (mover.type === 'K') {
       kingLives[mover.color]--;
       logEvent(`💣 ${mover.color.toUpperCase()} King stepped on a landmine! (${kingLives[mover.color]} lives left)`, true);
@@ -1203,6 +1274,7 @@ function executeMove(fr, fc, tr, tc, isBonusJump = false) {
   if (lavaTiles.has(destKey) && board[destR][destC]) {
     if (mover.type !== 'K') {
       board[destR][destC] = null;
+      spawnFx('boom', destR, destC);
       logEvent(`🌋 ${mover.color.toUpperCase()} ${mover.type} fell into lava at ${coordName(destR, destC)}!`, true);
     }
   }
@@ -1241,6 +1313,7 @@ function respawnKing(kingPiece) {
       if (!board[r][c] && !craters.has(`${r},${c}`) && !lavaTiles.has(`${r},${c}`)) {
         board[r][c] = kingPiece;
         logEvent(`✨ ${kingPiece.color.toUpperCase()} King respawned at ${coordName(r, c)}!`, true);
+        spawnFx('dust', r, c);
         return;
       }
     }
@@ -1272,23 +1345,102 @@ function advanceTurn() {
   render();
 
   if (turn === 'b' && !gameOver) {
-    setTimeout(makeBotMove400Elo, 450);
+    setTimeout(makeBotMove, 450);
   }
 }
 
-function makeBotMove400Elo() {
+/* ---------- Bot move scorers (higher = better) ---------- */
+
+// ~200 ELO: wanders around almost randomly, only occasionally notices a capture.
+function scoreMove200(fr, fc, m) {
+  let score = Math.random() * 10;
+  if (board[m.r][m.c] && Math.random() < 0.25) score += 10;
+  return score;
+}
+
+// ~400 ELO: random noise + likes captures (the original bot).
+function scoreMove400(fr, fc, m) {
+  let score = Math.random() * 4.5;
+  const target = board[m.r][m.c];
+  if (target) {
+    score += PIECE_VALUES[target.type] * (Math.random() < 0.7 ? 1.5 : 0.2);
+  }
+  return score;
+}
+
+// ~800 ELO: values trades, avoids hanging pieces, escapes threats, dodges hazards, pushes pawns.
+const BOT800_VALUES = { P: 1, N: 3, B: 3, R: 5, G: 6, Q: 9, K: 8 };
+
+function squareAttackedBy(color, r, c) {
+  for (let rr = 0; rr < 8; rr++) {
+    for (let cc = 0; cc < 8; cc++) {
+      const p = board[rr][cc];
+      if (p && p.color === color && getPseudoLegalMoves(rr, cc).some(x => x.r === r && x.c === c)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function scoreMove800(fr, fc, m) {
+  const mover = board[fr][fc];
+  const target = board[m.r][m.c];
+  const myVal = BOT800_VALUES[mover.type];
+  let score = 0;
+
+  // Material gain
+  if (target) {
+    if (target.shield) score += 0.4;
+    else score += target.type === 'K' ? 10 : BOT800_VALUES[target.type];
+  }
+
+  // Is my piece currently under threat? Reward getting out of it.
+  if (squareAttackedBy('w', fr, fc)) score += myVal * 0.8;
+
+  // Simulate the move to see whether the destination is safe / defended.
+  board[m.r][m.c] = mover;
+  board[fr][fc] = null;
+  const attacked = squareAttackedBy('w', m.r, m.c);
+  let defended = false;
+  if (attacked) {
+    const saved = mover;
+    board[m.r][m.c] = { color: 'w', type: 'P', trapped: 0, shield: false };
+    defended = squareAttackedBy('b', m.r, m.c);
+    board[m.r][m.c] = saved;
+  }
+  board[fr][fc] = mover;
+  board[m.r][m.c] = target;
+
+  if (attacked) score -= defended ? myVal * 0.35 : myVal;
+
+  // Hazards
+  const key = `${m.r},${m.c}`;
+  if (lavaTiles.has(key) && mover.type !== 'K') score -= myVal + 2;
+  if (landmines.has(key)) score -= mover.type === 'K' ? 8 : myVal + 2;
+  if (quicksand.has(key)) score -= 1.5;
+
+  // Positional ideas
+  if (mover.type !== 'K') score += (7 - distCenter(m.r, m.c)) * 0.04;
+  else score -= 0.3;
+  if (mover.type === 'P') {
+    score += 0.15;
+    if (m.r === 7 && reversePawnTurns === 0) score += 7;
+  }
+
+  return score + Math.random() * 0.4;
+}
+
+function makeBotMove() {
   if (gameOver || turn !== 'b') return;
+  const scorer = botElo <= 200 ? scoreMove200 : (botElo >= 800 ? scoreMove800 : scoreMove400);
   const allMoves = [];
   for (let r = 0; r < 8; r++) {
     for (let c = 0; c < 8; c++) {
       if (board[r][c] && board[r][c].color === 'b') {
         const moves = getPseudoLegalMoves(r, c);
         moves.forEach(m => {
-          let score = Math.random() * 4.5;
-          const target = board[m.r][m.c];
-          if (target) {
-            score += PIECE_VALUES[target.type] * (Math.random() < 0.7 ? 1.5 : 0.2);
-          }
+          const score = scorer(r, c, m);
           allMoves.push({ fr: r, fc: c, tr: m.r, tc: m.c, score });
         });
       }
@@ -1332,8 +1484,8 @@ function endMatch(winnerColor) {
   gameOver = true;
   document.getElementById('winnerTitle').textContent = winnerColor === 'w' ? '🏆 VICTORY!' : '💀 DEFEAT!';
   document.getElementById('winnerSub').textContent = winnerColor === 'w'
-    ? 'You captured the 400 ELO Bot’s King 3 times!'
-    : 'The 400 ELO Bot captured your King 3 times!';
+    ? `You captured the ${botElo} ELO Bot’s King 3 times!`
+    : `The ${botElo} ELO Bot captured your King 3 times!`;
   document.getElementById('gameOverModal').classList.add('open');
 }
 
@@ -1353,6 +1505,7 @@ function resetGame() {
   document.getElementById('gameOverModal').classList.remove('open');
   pieceElements.clear();
   document.getElementById('piecesLayer').innerHTML = '';
+  document.getElementById('fxLayer').innerHTML = '';
   turn = 'w';
   selected = null;
   validMoves = [];
@@ -1378,11 +1531,56 @@ function resetGame() {
   document.getElementById('modDesc').textContent = 'Make your opening moves. Every 3rd full turn unleashes one of 30 chaotic modifiers!';
   initBoard();
   buildGridDOM();
+  suppressFx = true;
   render();
+  suppressFx = false;
+  updateBotUI();
   logEvent('Match started! Capture the enemy King 3 times to win.');
 }
 
 // Helpers
+function spawnFx(kind, r, c) {
+  const layer = document.getElementById('fxLayer');
+  if (!layer || suppressFx) return;
+  if (fogTurns > 0 && !isVisibleToWhite(r, c)) return; // don't leak info through fog
+  const fx = document.createElement('div');
+  fx.className = 'fx';
+  fx.style.left = (c * 12.5) + '%';
+  fx.style.top = (r * 12.5) + '%';
+  let html = '';
+  if (kind === 'boom') {
+    html += '<div class="fx-flash"></div><div class="fx-ring"></div>';
+    const n = 8;
+    for (let i = 0; i < n; i++) {
+      const a = Math.round((360 / n) * i + Math.random() * 30);
+      const d = 28 + Math.round(Math.random() * 16);
+      html += `<div class="fx-spark" style="--a:${a}deg; --d:${d}px"></div>`;
+    }
+  } else {
+    const n = 6;
+    for (let i = 0; i < n; i++) {
+      const ang = (Math.PI * 2 / n) * i + Math.random() * 0.8;
+      const dist = 55 + Math.random() * 35;
+      const dx = Math.round(Math.cos(ang) * dist);
+      const dy = Math.round(Math.sin(ang) * dist * 0.8);
+      html += `<div class="fx-puff" style="--dx:${dx}%; --dy:${dy}%; animation-delay:${Math.round(Math.random() * 60)}ms"></div>`;
+    }
+  }
+  fx.innerHTML = html;
+  layer.appendChild(fx);
+  setTimeout(() => fx.remove(), 800);
+}
+function updateBotUI() {
+  document.getElementById('botLabel').textContent = `BOT ~${botElo} (BLACK)`;
+  document.getElementById('gameTitle').textContent = `⚡ CHAOS CHESS (${botElo} ELO BOT)`;
+  document.querySelectorAll('.elo-btn').forEach(b => b.classList.toggle('active', Number(b.dataset.elo) === botElo));
+}
+function setBotElo(elo) {
+  if (elo === botElo) return;
+  botElo = elo;
+  updateBotUI();
+  logEvent(`🤖 Bot difficulty set to ~${elo} ELO (applies from its next move).`);
+}
 function inBounds(r, c) { return r >= 0 && r < 8 && c >= 0 && c < 8; }
 function distCenter(r, c) { return Math.abs(r - 3.5) + Math.abs(c - 3.5); }
 function coordName(r, c) { return `${String.fromCharCode(97 + c)}${8 - r}`; }
