@@ -501,6 +501,21 @@
         icon: "💵",
         versions: [
           {
+            version: "0.10.0", date: "2026-11-18", title: "Play Mode Update",
+             changes: [
+              { type: "new", text: "Added Play mode. Press P or click Play to take control of any player, with WASD to move, mouse to aim and click to fire." },
+              { type: "new", text: "Play mode supports all three gadgets (frag, gas and gateway), reviving and carrying downed teammates, and switching teammates with Tab." },
+              { type: "new", text: "Added a smart auto camera that follows the action like a broadcast director, with on-screen captions explaining each shot." },
+              { type: "new", text: "Added a Minimal UI toggle (H key) for a cleaner viewing experience. Your choice is remembered." },
+              { type: "new", text: "Added reviving. Downed players can be revived in about 4 seconds and carried to safety first if enemies are nearby." },
+              { type: "change", text: "Cashouts now take 90 seconds." },
+              { type: "change", text: "Respawns now take 12 seconds, and a full team wipe respawns the squad together after 20 seconds." },
+              { type: "change", text: "The leaderboard now ranks teams by projected cash (balance plus pending cashout) and animates teams moving up or down." },
+              { type: "fix", text: "Fixed the revive, respawn and gateway timing so downed players are no longer stuck in limbo." },
+              { type: "fix", text: "Fixed the tournament so the next match correctly resets the camera and director state." }
+            ]
+          },
+          {
             version: "Patch 12", date: "2026-11-17", title: "UI Overhaul",
             changes: [
               { type: "change", text: "Redesigned HUD, scoreboard, and cash-out indicators." },
