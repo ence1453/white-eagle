@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BitLife Deluxe - Spicy Life Simulator</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: #1e272e;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 16px;
+    }
+
+    .phone-frame {
+      width: 100%;
+      max-width: 430px;
+      height: 780px;
+      background-color: #f5f6fa;
+      border-radius: 24px;
+      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.45);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border: 6px solid #2f3640;
+      position: relative;
+    }
+
+    /* Setup Screen */
+    .setup-screen {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, #e84118 0%, #c23616 100%);
+      color: white;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .setup-card {
+      background: white;
+      color: #2f3640;
+      border-radius: 18px;
+      padding: 22px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+    }
+
+    .setup-card h1 {
+      color: #e84118;
+      font-size: 1.55rem;
+      margin-bottom: 4px;
+      text-align: center;
+      font-weight: 800;
+    }
+
+    .setup-card .tagline {
+      text-align: center;
+      font-size: 0.85rem;
+      color: #718093;
+      margin-bottom: 18px;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 700;
+      margin-bottom: 5px;
+      color: #353b48;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .gender-toggle {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .gender-btn {
+      padding: 10px;
+      border: 2px solid #dcdde1;
+      background: #f5f6fa;
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+      color: #2f3640;
+      transition: all 0.15s;
+    }
+
+    .gender-btn.active {
+      border-color: #e84118;
+      background: #ffeaa7;
+      color: #c23616;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 10px 12px;
+      border: 2px solid #dcdde1;
+      border-radius: 8px;
+      font-size: 0.92rem;
+      color: #2f3640;
+      background: white;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: #0097e6;
+    }
+
+    .dice-btn {
+      background: #273c75;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 0 12px;
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+
+    .start-btn {
+      width: 100%;
+      background: #44bd32;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 14px;
+      font-size: 1.05rem;
+      font-weight: 800;
+      cursor: pointer;
+      margin-top: 8px;
+      box-shadow: 0 4px 0 #2e8621;
+    }
+
+    .start-btn:active {
+      transform: translateY(2px);
+      box-shadow: 0 2px 0 #2e8621;
+    }
+
+    /* Header */
+    .header {
+      background-color: #e84118;
+      color: white;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .char-info h2 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .char-info p {
+      font-size: 0.8rem;
+      opacity: 0.92;
+      margin-top: 2px;
+    }
+
+    .bank-box {
+      text-align: right;
+    }
+
+    .bank-box .balance {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #4cd137;
+      background: rgba(0, 0, 0, 0.28);
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+
+    .bank-box .label {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 2px;
+      display: block;
+    }
+
+    /* Life Log */
+    .life-log {
+      flex: 1;
+      padding: 14px 16px;
+      overflow-y: auto;
+      background-color: #ffffff;
+      border-bottom: 1px solid #dcdde1;
+    }
+
+    .log-entry {
+      margin-bottom: 14px;
+      font-size: 0.91rem;
+      line-height: 1.45;
+      color: #2f3640;
+      border-left: 3px solid #f5f6fa;
+      padding-left: 8px;
+    }
+
+    .log-entry.spicy {
+      border-left-color: #e84118;
+    }
+
+    .log-age {
+      font-weight: 700;
+      color: #e84118;
+      margin-bottom: 2px;
+      font-size: 0.85rem;
+    }
+
+    /* Action Bar */
+    .action-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      padding: 10px 12px;
+      background-color: #273c75;
+    }
+
+    .action-btn {
+      background-color: #40739e;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 4px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .action-btn:hover {
+      background-color: #487eb0;
+    }
+
+    .age-btn {
+      grid-column: span 4;
+      background-color: #44bd32;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 11px;
+      font-size: 1.1rem;
+      font-weight: 800;
+      cursor: pointer;
+      margin-top: 3px;
+      box-shadow: 0 4px 0 #2e8621;
+      transition: transform 0.1s;
+    }
+
+    .age-btn:active {
+      transform: translateY(2px);
+      box-shadow: 0 2px 0 #2e8621;
+    }
+
+    /* Stats Section */
+    .stats-panel {
+      padding: 10px 16px;
+      background-color: #f5f6fa;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .stat-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .stat-label {
+      width: 92px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #353b48;
+    }
+
+    .bar-bg {
+      flex: 1;
+      height: 13px;
+      background-color: #dcdde1;
+      border-radius: 7px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      width: 50%;
+      background-color: #44bd32;
+      transition: width 0.3s ease, background-color 0.3s ease;
+    }
+
+    .stat-val {
+      width: 34px;
+      text-align: right;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #2f3640;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.68);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      padding: 18px;
+      z-index: 15;
+    }
+
+    .modal-card {
+      background: white;
+      width: 100%;
+      max-height: 85%;
+      overflow-y: auto;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+      text-align: center;
+    }
+
+    .modal-card h3 {
+      color: #e84118;
+      margin-bottom: 8px;
+      font-size: 1.18rem;
+    }
+
+    .modal-card p {
+      color: #2f3640;
+      font-size: 0.92rem;
+      margin-bottom: 16px;
+      line-height: 1.45;
+    }
+
+    .modal-choices {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .choice-btn {
+      background-color: #0097e6;
+      color: white;
+      border: none;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      line-height: 1.3;
+    }
+
+    .choice-btn:hover {
+      background-color: #00a8ff;
+    }
+
+    .choice-btn.danger {
+      background-color: #e84118;
+    }
+
+    .choice-btn.danger:hover {
+      background-color: #c23616;
+    }
+
+    .choice-btn.secondary {
+      background-color: #718093;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="phone-frame">
+    <!-- Character Customization Setup Screen -->
+    <div class="setup-screen" id="setup-screen">
+      <div class="setup-card">
+        <h1>NEW BITLIFE</h1>
+        <p class="tagline">Customize your starting identity</p>
+
+        <div class="form-group">
+          <label>Gender</label>
+          <div class="gender-toggle">
+            <button type="button" class="gender-btn active" id="btn-male" onclick="selectGender('Male')">♂️ Male</button>
+            <button type="button" class="gender-btn" id="btn-female" onclick="selectGender('Female')">♀️ Female</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>First & Last Name</label>
+          <div class="input-row">
+            <input type="text" id="input-name" class="form-control" placeholder="Enter full name..." />
+            <button type="button" class="dice-btn" title="Randomize Name" onclick="randomizeName()">🎲</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Birthplace</label>
+          <select id="select-city" class="form-control">
+            <option value="Sydney, Australia">🇦🇺 Sydney, Australia</option>
+            <option value="New York, USA">🇺🇸 New York, USA</option>
+            <option value="Miami, USA">🇺🇸 Miami, USA</option>
+            <option value="London, UK">🇬🇧 London, UK</option>
+            <option value="Tokyo, Japan">🇯🇵 Tokyo, Japan</option>
+            <option value="Toronto, Canada">🇨🇦 Toronto, Canada</option>
+            <option value="Berlin, Germany">🇩🇪 Berlin, Germany</option>
+            <option value="Rio de Janeiro, Brazil">🇧🇷 Rio de Janeiro, Brazil</option>
+            <option value="Monaco">🇲🇨 Monte Carlo, Monaco</option>
+          </select>
+        </div>
+
+        <button type="button" class="start-btn" onclick="beginCustomLife()">Start Life</button>
+      </div>
+    </div>
+
+    <!-- Top Header -->
+    <div class="header">
+      <div class="char-info">
+        <h2 id="char-name">Jordan Mercer</h2>
+        <p id="char-sub">Age: 0 • Unemployed</p>
+      </div>
+      <div class="bank-box">
+        <div class="balance" id="char-money">$0</div>
+        <span class="label">Bank Balance</span>
+      </div>
+    </div>
+
+    <!-- Scrollable Event Log -->
+    <div class="life-log" id="life-log"></div>
+
+    <!-- Action Controls -->
+    <div class="action-bar">
+      <button class="action-btn" onclick="openActivityMenu('job')">💼 Career</button>
+      <button class="action-btn" onclick="openActivityMenu('love')">❤️ Love</button>
+      <button class="action-btn" onclick="openActivityMenu('crime')">😈 Hustle</button>
+      <button class="action-btn" onclick="openActivityMenu('lifestyle')">✨ Lifestyle</button>
+      <button class="age-btn" id="age-btn" onclick="ageUp()">+ Age</button>
+    </div>
+
+    <!-- Stats Bars -->
+    <div class="stats-panel">
+      <div class="stat-row">
+        <span class="stat-label">😊 Happiness</span>
+        <div class="bar-bg"><div class="bar-fill" id="bar-happiness"></div></div>
+        <span class="stat-val" id="val-happiness">50%</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">❤️ Health</span>
+        <div class="bar-bg"><div class="bar-fill" id="bar-health"></div></div>
+        <span class="stat-val" id="val-health">50%</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">🧠 Smarts</span>
+        <div class="bar-bg"><div class="bar-fill" id="bar-smarts"></div></div>
+        <span class="stat-val" id="val-smarts">50%</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">✨ Looks</span>
+        <div class="bar-bg"><div class="bar-fill" id="bar-looks"></div></div>
+        <span class="stat-val" id="val-looks">50%</span>
+      </div>
+    </div>
+
+    <!-- Interactive Event / Menu Modal -->
+    <div class="modal-overlay" id="modal-overlay">
+      <div class="modal-card">
+        <h3 id="modal-title">Event Title</h3>
+        <p id="modal-desc">Event description goes here.</p>
+        <div class="modal-choices" id="modal-choices"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const maleNames = ["Liam", "Noah", "Ethan", "Marcus", "Julian", "Leo", "Dante", "Xavier", "Caleb", "Kai"];
+    const femaleNames = ["Maya", "Chloe", "Sienna", "Zoe", "Elena", "Aria", "Naomi", "Scarlett", "Isla", "Ruby"];
+    const lastNames = ["Mercer", "Vance", "Sterling", "Cruz", "Kowalski", "Sinclair", "Moreau", "Sato", "Delgado", "O'Connor"];
+
+    const jobs = [
+      { title: "Barista", salary: 22000, minSmarts: 0, minLooks: 0 },
+      { title: "Nightclub Bouncer", salary: 34000, minSmarts: 10, minLooks: 25 },
+      { title: "Social Media Influencer", salary: 65000, minSmarts: 20, minLooks: 75 },
+      { title: "Corporate Lawyer", salary: 125000, minSmarts: 75, minLooks: 0 },
+      { title: "Tech Startup Founder", salary: 190000, minSmarts: 85, minLooks: 0 },
+      { title: "Celebrity Surgeon", salary: 280000, minSmarts: 92, minLooks: 30 }
+    ];
+
+    const datesPool = [
+      { name: "Valentina", job: "Runway Model", looks: 92, crazy: 75 },
+      { name: "Sebastian", job: "Crypto Trader", looks: 78, crazy: 65 },
+      { name: "Camille", job: "ER Doctor", looks: 81, crazy: 20 },
+      { name: "Damon", job: "Underground DJ", looks: 85, crazy: 85 },
+      { name: "Tessa", job: "Bakery Owner", looks: 74, crazy: 15 },
+      { name: "enzo", job: "Yacht Captain", looks: 88, crazy: 50 }
+    ];
+
+    // Spicy, varied event pool (no repetitive bully spam!)
+    const lifeEvents = [
+      // Childhood (4 - 12)
+      {
+        minAge: 4, maxAge: 10,
+        title: "Secret Stash",
+        desc: "While exploring your parents' attic, you find an old locked metal box under a floorboard.",
+        choices: [
+          { text: "Pry it open with a screwdriver", effect: { smarts: 6, happiness: 10, money: 150 }, log: "You cracked open the box and found $150 in vintage bills and old love letters!" },
+          { text: "Tell your parents about it", effect: { happiness: 4 }, log: "Your parents thanked you for your honesty and quietly hid the box away." }
+        ]
+      },
+      {
+        minAge: 6, maxAge: 12,
+        title: "Viral Talent Show",
+        desc: "Your school talent show is tonight, and someone is recording the whole thing for the internet.",
+        choices: [
+          { text: "Perform an outrageous magic trick", effect: { looks: 5, happiness: 12 }, log: "Your magic trick went unexpectedly right and the crowd went wild!" },
+          { text: "Attempt a risky backflip", effect: { health: -12, happiness: -8 }, log: "You face-planted on stage. The clip got 50,000 views by morning." }
+        ]
+      },
+      // Teen Years (13 - 17)
+      {
+        minAge: 13, maxAge: 17,
+        title: "Midnight House Party",
+        desc: "The most popular kid in school invited you to a secret mansion party while their parents are out of town.",
+        choices: [
+          { text: "Sneak out and go", effect: { happiness: 15, looks: 6, smarts: -4 }, log: "You snuck out to the party, danced all night, and became a local legend." },
+          { text: "Stay home and study", effect: { smarts: 10, happiness: -5 }, log: "You skipped the party and aced your Monday exam instead." },
+          { text: "Call in an anonymous noise complaint", effect: { happiness: 5, smarts: 4 }, log: "You watched from afar as the cops shut the party down at 11 PM." }
+        ]
+      },
+      {
+        minAge: 14, maxAge: 17,
+        title: "Underground Sneaker Flip",
+        desc: "A friend offers you a pair of rare limited-edition sneakers for $100 that might resell for $600.",
+        choices: [
+          { text: "Buy and flip them", effect: { money: 450, smarts: 5, happiness: 8 }, log: "They were 100% authentic! You flipped them online for a huge profit." },
+          { text: "Pass on the deal", effect: { smarts: 2 }, log: "You played it safe and kept your cash." }
+        ]
+      },
+      // Young Adult & Adult Drama (18 - 65)
+      {
+        minAge: 18, maxAge: 55,
+        title: "Juicy Workplace Scandal",
+        desc: "You accidentally walk into the breakroom and catch your married boss kissing the head of HR.",
+        choices: [
+          { text: "Blackmail your boss for a bonus", effect: { money: 8500, happiness: 10 }, log: "Your boss nervously wired you $8,500 'hush money' the very next morning." },
+          { text: "Quietly back out and pretend you saw nothing", effect: { smarts: 6 }, log: "You kept your mouth shut and suddenly started getting glowing performance reviews." },
+          { text: "Leak it in the company group chat", effect: { happiness: 15, money: -2000 }, log: "Chaos erupted! HR was fired, and you were mysteriously laid off weeks later." }
+        ]
+      },
+      {
+        minAge: 19, maxAge: 45,
+        title: "DMs From a Celebrity",
+        desc: "A verified A-list celebrity slides into your DMs inviting you to a private VIP yacht party this weekend.",
+        choices: [
+          { text: "Accept and fly out", effect: { happiness: 20, looks: 8, money: -500 }, log: "You partied on a superyacht all weekend and made unforgettable connections!" },
+          { text: "Screenshot and expose the DM", effect: { happiness: 8, looks: 4 }, log: "Your screenshot went viral on gossip blogs for 48 hours." },
+          { text: "Leave them on read", effect: { smarts: 5 }, log: "You ignored the DM and focused on your own life." }
+        ]
+      },
+      {
+        minAge: 21, maxAge: 70,
+        title: "High-Stakes Underground Poker",
+        desc: "A mysterious stranger invites you to a backroom high-stakes poker game.",
+        choices: [
+          { text: "Go all-in with a bluff", effect: { money: 12000, happiness: 18 }, log: "Your ice-cold bluff worked! You walked out $12,000 richer." },
+          { text: "Play conservative and fold", effect: { money: -500, happiness: -4 }, log: "You played cautiously and lost a modest $500 buy-in." },
+          { text: "Walk away before sitting down", effect: { smarts: 5 }, log: "You decided not to risk your hard-earned money." }
+        ]
+      },
+      {
+        minAge: 22, maxAge: 65,
+        title: "Mystery Suitcase",
+        desc: "At the airport baggage claim, someone grabs your bag and leaves behind an identical designer briefcase.",
+        choices: [
+          { text: "Open the briefcase at home", effect: { money: 15000, happiness: 12, health: -5 }, log: "Inside was $15,000 in unmarked bills and a burner phone. You kept the cash and tossed the phone!" },
+          { text: "Turn it in to airport security", effect: { happiness: 6, smarts: 5 }, log: "Security confiscated the briefcase without asking questions." }
+        ]
+      },
+      {
+        minAge: 25, maxAge: 75,
+        title: "Rival Sabotage",
+        desc: "A jealous neighbor is spreading wild rumors about you around the neighborhood.",
+        choices: [
+          { text: "Confront them publicly at a BBQ", effect: { happiness: 10, looks: 3 }, log: "You called them out in front of everyone and they backed down in embarrassment." },
+          { text: "Sign their email up for 500 spam lists", effect: { happiness: 12, smarts: 4 }, log: "Petty revenge served cold. Their inbox will never recover." },
+          { text: "Take the high road", effect: { smarts: 5 }, log: "You ignored the drama and let your reputation speak for itself." }
+        ]
+      },
+      {
+        minAge: 30, maxAge: 85,
+        title: "Long-Lost Inheritance",
+        desc: "A lawyer contacts you claiming an eccentric distant relative left you something in their will.",
+        choices: [
+          { text: "Sign the paperwork immediately", effect: { money: 25000, happiness: 15 }, log: "You inherited $25,000 and an antique gold watch!" },
+          { text: "Have a lawyer inspect it first", effect: { money: 22000, smarts: 8 }, log: "Everything checked out cleanly. You pocketed $22,000 after legal fees." }
+        ]
+      },
+      // Senior Years (65+)
+      {
+        minAge: 65, maxAge: 105,
+        title: "Retirement Community Drama",
+        desc: "A scandalous love triangle has broken out at the local bingo hall, and you're right in the middle of it.",
+        choices: [
+          { text: "Embrace the romance", effect: { happiness: 20, health: 5 }, log: "You became the undisputed heartthrob of the senior center!" },
+          { text: "Expose the gossip at Bingo Night", effect: { happiness: 12 }, log: "You spilled all the tea over the microphone during Bingo Night." }
+        ]
+      }
+    ];
+
+    let selectedGender = "Male";
+    let player = {};
+    let usedEventTitles = [];
+
+    function rand(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function clamp(val) {
+      return Math.max(0, Math.min(100, val));
+    }
+
+    function selectGender(gender) {
+      selectedGender = gender;
+      document.getElementById("btn-male").classList.toggle("active", gender === "Male");
+      document.getElementById("btn-female").classList.toggle("active", gender === "Female");
+      randomizeName();
+    }
+
+    function randomizeName() {
+      const pool = selectedGender === "Male" ? maleNames : femaleNames;
+      const first = pool[rand(0, pool.length - 1)];
+      const last = lastNames[rand(0, lastNames.length - 1)];
+      document.getElementById("input-name").value = `${first} ${last}`;
+    }
+
+    function beginCustomLife() {
+      const rawName = document.getElementById("input-name").value.trim();
+      const city = document.getElementById("select-city").value;
+
+      if (!rawName) {
+        randomizeName();
+      }
+
+      const finalName = document.getElementById("input-name").value.trim();
+      usedEventTitles = [];
+
+      player = {
+        name: finalName,
+        gender: selectedGender,
+        city: city,
+        age: 0,
+        money: 0,
+        job: null,
+        partner: null,
+        alive: true,
+        stats: {
+          happiness: rand(55, 95),
+          health: rand(65, 100),
+          smarts: rand(35, 90),
+          looks: rand(35, 95)
+        }
+      };
+
+      document.getElementById("setup-screen").style.display = "none";
+      document.getElementById("life-log").innerHTML = "";
+
+      const genderIcon = player.gender === "Male" ? "♂️" : "♀️";
+      addLog(`You were born a <strong>${player.gender.toLowerCase()}</strong> in <strong>${player.city}</strong>. Your parents named you <strong>${player.name}</strong> ${genderIcon}.`, true);
+      updateUI();
+    }
+
+    function addLog(text, isSpicy = false) {
+      const logDiv = document.getElementById("life-log");
+      const entry = document.createElement("div");
+      entry.className = isSpicy ? "log-entry spicy" : "log-entry";
+      entry.innerHTML = `<div class="log-age">Age: ${player.age} years</div><div>${text}</div>`;
+      logDiv.appendChild(entry);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    function updateUI() {
+      const genderIcon = player.gender === "Male" ? "♂️" : "♀️";
+      document.getElementById("char-name").textContent = `${player.name} ${genderIcon}`;
+
+      let statusParts = [`Age: ${player.age}`];
+      if (player.job) {
+        statusParts.push(`${player.job.title}`);
+      } else {
+        statusParts.push(player.age < 5 ? "Infant" : player.age < 18 ? "Student" : "Unemployed");
+      }
+      if (player.partner) {
+        statusParts.push(`❤️ ${player.partner.name}`);
+      }
+
+      document.getElementById("char-sub").textContent = statusParts.join(" • ");
+      document.getElementById("char-money").textContent = `$${player.money.toLocaleString()}`;
+
+      for (const [key, val] of Object.entries(player.stats)) {
+        const bar = document.getElementById(`bar-${key}`);
+        const label = document.getElementById(`val-${key}`);
+        bar.style.width = `${val}%`;
+        label.textContent = `${val}%`;
+
+        if (val > 60) bar.style.backgroundColor = "#44bd32";
+        else if (val > 25) bar.style.backgroundColor = "#fbc531";
+        else bar.style.backgroundColor = "#e84118";
+      }
+    }
+
+    function applyEffects(effect) {
+      if (effect.happiness) player.stats.happiness = clamp(player.stats.happiness + effect.happiness);
+      if (effect.health) player.stats.health = clamp(player.stats.health + effect.health);
+      if (effect.smarts) player.stats.smarts = clamp(player.stats.smarts + effect.smarts);
+      if (effect.looks) player.stats.looks = clamp(player.stats.looks + effect.looks);
+      if (effect.money) player.money += effect.money;
+      updateUI();
+    }
+
+    function ageUp() {
+      if (!player.alive) return;
+
+      player.age++;
+      let yearlyNotes = [];
+
+      // Salary income
+      if (player.job) {
+        const netIncome = Math.round(player.job.salary * 0.76);
+        player.money += netIncome;
+        yearlyNotes.push(`You earned $${netIncome.toLocaleString()} after taxes as a ${player.job.title}.`);
+      }
+
+      // Partner relationship events
+      if (player.partner && Math.random() < 0.25) {
+        if (player.partner.crazy > 60 && Math.random() < 0.5) {
+          applyEffects({ happiness: -8 });
+          yearlyNotes.push(`You had a fiery argument with ${player.partner.name} over a suspicious text message.`);
+        } else {
+          applyEffects({ happiness: 6 });
+          yearlyNotes.push(`${player.partner.name} surprised you with a romantic getaway!`);
+        }
+      }
+
+      // Life milestones
+      if (player.age === 5) yearlyNotes.push("You started primary school.");
+      if (player.age === 14) yearlyNotes.push("You entered high school.");
+      if (player.age === 18) yearlyNotes.push("You graduated high school! Careers, dating, and hustles are now unlocked.");
+
+      // Aging health curve
+      if (player.age > 55) {
+        player.stats.health = clamp(player.stats.health - rand(2, 6));
+      }
+
+      // Death check
+      if (player.stats.health <= 0 || (player.age > 78 && rand(1, 100) <= (player.age - 74) * 3)) {
+        player.alive = false;
+        player.stats.health = 0;
+        addLog(`<strong>You passed away at age ${player.age} in ${player.city}.</strong> Final net worth: $${player.money.toLocaleString()}.`, true);
+        updateUI();
+        showModal(
+          "Rest in Peace",
+          `${player.name} (${player.gender}) lived to age ${player.age} in ${player.city} and left behind $${player.money.toLocaleString()}.`,
+          [{
+            text: "Create a New Character",
+            action: () => {
+              closeModal();
+              document.getElementById("setup-screen").style.display = "flex";
+            }
+          }]
+        );
+        return;
+      }
+
+      // Filter out already seen events so nothing repeats back-to-back
+      let eligibleEvents = lifeEvents.filter(
+        e => player.age >= e.minAge && player.age <= e.maxAge && !usedEventTitles.includes(e.title)
+      );
+
+      // Reset seen events only if we exhausted all eligible ones
+      if (eligibleEvents.length === 0) {
+        eligibleEvents = lifeEvents.filter(e => player.age >= e.minAge && player.age <= e.maxAge);
+      }
+
+      // 60% chance for a spicy interactive event
+      if (eligibleEvents.length > 0 && Math.random() < 0.60) {
+        const ev = eligibleEvents[rand(0, eligibleEvents.length - 1)];
+        usedEventTitles.push(ev.title);
+
+        if (yearlyNotes.length > 0) addLog(yearlyNotes.join(" "));
+        updateUI();
+
+        showModal(
+          ev.title,
+          ev.desc,
+          ev.choices.map(c => ({
+            text: c.text,
+            action: () => {
+              applyEffects(c.effect);
+              addLog(c.log, true);
+              closeModal();
+            }
+          }))
+        );
+        return;
+      }
+
+      if (yearlyNotes.length === 0) {
+        const quietFlavors = [
+          `You spent the year exploring the nightlife in ${player.city}.`,
+          "You picked up a new hobby and kept a low profile this year.",
+          "A peaceful year passed with no major drama."
+        ];
+        yearlyNotes.push(quietFlavors[rand(0, quietFlavors.length - 1)]);
+      }
+
+      addLog(yearlyNotes.join(" "));
+      updateUI();
+    }
+
+    function openActivityMenu(type) {
+      if (!player.alive) return;
+
+      if (type === "job") {
+        if (player.age < 18) {
+          showModal("Too Young", "You need to finish high school (Age 18) before starting a full-time career.", [{ text: "Got it", action: closeModal }]);
+          return;
+        }
+        const choices = jobs.map(j => ({
+          text: `${j.title} ($${j.salary.toLocaleString()}/yr) — Req: ${j.minSmarts}% Smarts, ${j.minLooks}% Looks`,
+          action: () => {
+            if (player.stats.smarts >= j.minSmarts && player.stats.looks >= j.minLooks) {
+              player.job = j;
+              addLog(`You landed a job as a <strong>${j.title}</strong>!`, true);
+              updateUI();
+            } else {
+              addLog(`You interviewed for ${j.title}, but didn't meet their Smarts or Looks standards.`);
+            }
+            closeModal();
+          }
+        }));
+        choices.push({ text: "Cancel", className: "secondary", action: closeModal });
+        showModal("Career Board", "Apply for a job matching your stats:", choices);
+      }
+
+      if (type === "love") {
+        if (player.age < 16) {
+          showModal("Too Young", "Wait until you're at least 16 to enter the dating scene.", [{ text: "OK", action: closeModal }]);
+          return;
+        }
+        if (player.partner) {
+          showModal(
+            `Dating ${player.partner.name}`,
+            `${player.partner.name} (${player.partner.job}) • Looks: ${player.partner.looks}% • Drama Level: ${player.partner.crazy}%`,
+            [
+              {
+                text: "Go on a Luxury Date (-$300, +15 Happiness)",
+                action: () => {
+                  if (player.money >= 300) {
+                    applyEffects({ money: -300, happiness: 15 });
+                    addLog(`You took ${player.partner.name} to a five-star rooftop restaurant.`);
+                  } else {
+                    addLog("You couldn't afford the $300 date night.");
+                  }
+                  closeModal();
+                }
+              },
+              {
+                text: "Break Up",
+                className: "danger",
+                action: () => {
+                  addLog(`You dumped ${player.partner.name}. Drama ensued!`, true);
+                  player.partner = null;
+                  applyEffects({ happiness: -10 });
+                  closeModal();
+                }
+              },
+              { text: "Close", className: "secondary", action: closeModal }
+            ]
+          );
+        } else {
+          const candidate = datesPool[rand(0, datesPool.length - 1)];
+          const displayName = candidate.name.charAt(0).toUpperCase() + candidate.name.slice(1);
+          showModal(
+            "Dating App Match!",
+            `You matched with <strong>${displayName}</strong>, a ${candidate.job} (Looks: ${candidate.looks}%, Drama Risk: ${candidate.crazy}%).`,
+            [
+              {
+                text: `Ask ${displayName} Out`,
+                action: () => {
+                  if (player.stats.looks >= 30 || Math.random() < 0.65) {
+                    player.partner = { ...candidate, name: displayName };
+                    applyEffects({ happiness: 15 });
+                    addLog(`You started dating <strong>${displayName}</strong> (${candidate.job})!`, true);
+                  } else {
+                    applyEffects({ happiness: -8 });
+                    addLog(`${displayName} ghosted you after the first coffee date.`);
+                  }
+                  closeModal();
+                }
+              },
+              { text: "Swipe Left", className: "secondary", action: closeModal }
+            ]
+          );
+        }
+      }
+
+      if (type === "crime") {
+        if (player.age < 14) {
+          showModal("Too Young", "You're too young for shady side hustles.", [{ text: "OK", action: closeModal }]);
+          return;
+        }
+        showModal("Shady Side Hustles", "High risk, high reward. Don't get caught!", [
+          {
+            text: "Pickpocket Tourists (Low Risk)",
+            className: "danger",
+            action: () => {
+              if (Math.random() < 0.65) {
+                const loot = rand(150, 600);
+                applyEffects({ money: loot, happiness: 6 });
+                addLog(`You successfully pickpocketed $${loot} from a distracted tourist!`, true);
+              } else {
+                applyEffects({ health: -15, happiness: -15, money: -300 });
+                addLog("You got caught pickpocketing, beaten up, and fined $300!", true);
+              }
+              closeModal();
+            }
+          },
+          {
+            text: "Pull Off a Luxury Art Heist (Extreme Risk)",
+            className: "danger",
+            action: () => {
+              if (player.stats.smarts > 65 && Math.random() < 0.40) {
+                applyEffects({ money: 50000, happiness: 25 });
+                addLog("MASTERMIND! You bypassed the lasers and sold a stolen painting for $50,000!", true);
+              } else {
+                applyEffects({ health: -25, happiness: -25, money: -5000 });
+                addLog("BUSTED! The alarm tripped, you paid $5,000 in bail, and your reputation tanked.", true);
+              }
+              closeModal();
+            }
+          },
+          { text: "Walk Away", className: "secondary", action: closeModal }
+        ]);
+      }
+
+      if (type === "lifestyle") {
+        showModal("Self-Improvement & Lifestyle", "Upgrade your stats or treat yourself:", [
+          {
+            text: "Plastic Surgery (-$4,000, +25 Looks)",
+            action: () => {
+              if (player.money >= 4000) {
+                if (Math.random() < 0.85) {
+                  applyEffects({ money: -4000, looks: 25, happiness: 10 });
+                  addLog("Your cosmetic surgery was a stunning success!", true);
+                } else {
+                  applyEffects({ money: -4000, looks: -20, health: -15, happiness: -15 });
+                  addLog("BOTCHED! Your plastic surgery went terribly wrong.", true);
+                }
+              } else {
+                addLog("You need $4,000 for cosmetic surgery.");
+              }
+              closeModal();
+            }
+          },
+          {
+            text: "Study at University Library (Free, +8 Smarts, -2 Happiness)",
+            action: () => {
+              applyEffects({ smarts: 8, happiness: -2 });
+              addLog("You spent hours reading advanced books at the library.");
+              closeModal();
+            }
+          },
+          {
+            text: "Spa & Wellness Retreat (-$250, +12 Health, +12 Happiness)",
+            action: () => {
+              if (player.money >= 250) {
+                applyEffects({ money: -250, health: 12, happiness: 12 });
+                addLog("You enjoyed a rejuvenating spa weekend.");
+              } else {
+                addLog("You don't have $250 for a spa retreat.");
+              }
+              closeModal();
+            }
+          },
+          { text: "Cancel", className: "secondary", action: closeModal }
+        ]);
+      }
+    }
+
+    function showModal(title, desc, choices) {
+      document.getElementById("modal-title").textContent = title;
+      document.getElementById("modal-desc").innerHTML = desc;
+      const choiceBox = document.getElementById("modal-choices");
+      choiceBox.innerHTML = "";
+
+      choices.forEach(c => {
+        const btn = document.createElement("button");
+        btn.className = "choice-btn" + (c.className ? ` ${c.className}` : "");
+        btn.textContent = c.text;
+        btn.onclick = c.action;
+        choiceBox.appendChild(btn);
+      });
+
+      document.getElementById("modal-overlay").style.display = "flex";
+    }
+
+    function closeModal() {
+      document.getElementById("modal-overlay").style.display = "none";
+    }
+
+    // Initialize default random name on load
+    randomizeName();
+  </script>
+</body>
+</html>

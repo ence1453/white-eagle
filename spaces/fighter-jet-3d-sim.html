@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Fighter Jet Flight Simulator - VORTEX-3D</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+  body { background: #050a12; overflow: hidden; font-family: 'Courier New', Courier, monospace; color: #00ff88; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+  #hud {
+    position: fixed; inset: 0; pointer-events: none;
+    display: flex; flex-direction: column; justify-content: space-between; padding: 20px;
+  }
+  .top-bar { display: flex; justify-content: space-between; align-items: flex-start; }
+  .panel {
+    background: rgba(5, 18, 28, 0.72); border: 1px solid rgba(0, 255, 136, 0.45);
+    padding: 12px 16px; border-radius: 4px; box-shadow: 0 0 15px rgba(0, 255, 136, 0.15);
+  }
+  .panel h2 { font-size: 13px; letter-spacing: 2px; color: #7fffe0; margin-bottom: 6px; border-bottom: 1px solid rgba(0,255,136,0.3); padding-bottom: 4px; }
+  .stat { font-size: 15px; margin: 3px 0; }
+  .val { font-weight: bold; color: #ffffff; }
+  #crosshair {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 140px; height: 140px; pointer-events: none;
+  }
+  #radar-wrap { position: relative; width: 150px; height: 150px; }
+  #radar {
+    width: 150px; height: 150px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,45,30,0.85) 0%, rgba(2,15,20,0.95) 100%);
+    border: 2px solid #00ff88;
+  }
+  #msg-box {
+    position: fixed; top: 22%; left: 50%; transform: translateX(-50%);
+    font-size: 22px; font-weight: bold; letter-spacing: 3px; text-align: center;
+    text-shadow: 0 0 10px #00ff88; opacity: 0; transition: opacity 0.25s;
+  }
+  #overlay {
+    position: fixed; inset: 0; background: rgba(4, 10, 18, 0.88);
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    z-index: 10; pointer-events: auto; text-align: center; padding: 20px;
+  }
+  #overlay h1 { font-size: 40px; letter-spacing: 5px; color: #00ff88; text-shadow: 0 0 20px rgba(0,255,136,0.6); margin-bottom: 10px; }
+  #overlay p { color: #b5e8d5; max-width: 600px; line-height: 1.6; margin-bottom: 24px; font-size: 15px; }
+  .controls-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 28px;
+    background: rgba(0, 30, 40, 0.7); border: 1px solid #00ff88; padding: 18px 26px;
+    border-radius: 6px; margin-bottom: 28px; text-align: left; font-size: 14px;
+  }
+  .key { color: #fff; background: #0b3a42; padding: 2px 7px; border-radius: 3px; border: 1px solid #00ff88; }
+  button {
+    background: #00ff88; color: #031218; border: none; padding: 14px 36px;
+    font-size: 18px; font-weight: bold; letter-spacing: 2px; border-radius: 4px;
+    cursor: pointer; font-family: inherit; box-shadow: 0 0 20px rgba(0,255,136,0.5);
+  }
+  button:hover { background: #66ffbb; }
+  .bar-bg { width: 140px; height: 10px; background: #0a242c; border: 1px solid #00ff88; margin-top: 4px; }
+  .bar-fill { height: 100%; background: #00ff88; width: 100%; transition: width 0.1s; }
+  #stall-warn { color: #ff3b3b; font-weight: bold; display: none; animation: blink 0.4s infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<div id="hud">
+  <div class="top-bar">
+    <div class="panel">
+      <h2>FLIGHT TELEMETRY</h2>
+      <div class="stat">AIRSPEED: <span class="val" id="spd-val">420</span> KTS</div>
+      <div class="stat">ALTITUDE: <span class="val" id="alt-val">3200</span> FT</div>
+      <div class="stat">HEADING:  <span class="val" id="hdg-val">000</span>°</div>
+      <div class="stat">THROTTLE: <span class="val" id="thr-val">65</span>%</div>
+      <div class="bar-bg"><div class="bar-fill" id="thr-bar"></div></div>
+      <div class="stat" id="stall-warn">⚠ STALL / LOW ALTITUDE</div>
+    </div>
+
+    <div class="panel" style="text-align:center;">
+      <h2>COMBAT STATUS</h2>
+      <div class="stat">SCORE: <span class="val" id="score-val">0</span></div>
+      <div class="stat">HOSTILES: <span class="val" id="enemy-val">5</span></div>
+      <div class="stat">MISSILES: <span class="val" id="msl-val">8</span></div>
+      <div class="stat">HULL: <span class="val" id="hp-val">100</span>%</div>
+      <div class="bar-bg" style="margin:4px auto 0;"><div class="bar-fill" id="hp-bar"></div></div>
+    </div>
+
+    <div class="panel">
+      <h2>RADAR</h2>
+      <div id="radar-wrap">
+        <canvas id="radar" width="150" height="150"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+    <div class="panel" style="font-size:12px;">
+      CAM: <span class="val" id="cam-mode">CHASE</span> [C] | AUDIO: <span class="val" id="snd-state">ON</span> [M] | PAUSE [P]
+    </div>
+    <div class="panel" style="font-size:12px;">
+      [W/S] PITCH &nbsp; [A/D] ROLL &nbsp; [Q/E] YAW &nbsp; [SHIFT/CTRL] THROTTLE &nbsp; [SPACE] VULCAN &nbsp; [F] MISSILE
+    </div>
+  </div>
+</div>
+
+<svg id="crosshair" viewBox="0 0 140 140">
+  <circle cx="70" cy="70" r="28" fill="none" stroke="rgba(0,255,136,0.75)" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <line x1="70" y1="22" x2="70" y2="38" stroke="#00ff88" stroke-width="1.5"/>
+  <line x1="70" y1="102" x2="70" y2="118" stroke="#00ff88" stroke-width="1.5"/>
+  <line x1="22" y1="70" x2="38" y2="70" stroke="#00ff88" stroke-width="1.5"/>
+  <line x1="102" y1="70" x2="118" y2="70" stroke="#00ff88" stroke-width="1.5"/>
+  <circle cx="70" cy="70" r="2" fill="#00ff88"/>
+  <g id="pitch-ladder" stroke="rgba(0,255,136,0.5)" stroke-width="1">
+    <line x1="48" y1="52" x2="58" y2="52"/><line x1="82" y1="52" x2="92" y2="52"/>
+    <line x1="48" y1="88" x2="58" y2="88"/><line x1="82" y1="88" x2="92" y2="88"/>
+  </g>
+</svg>
+
+<div id="msg-box">TARGET DESTROYED</div>
+
+<div id="overlay">
+  <h1>VORTEX-3D // SKY INTERCEPT</h1>
+  <p>Self-contained 3D Software-Rendered Fighter Jet Simulator. Engage hostile bogeys over an endless procedural mountain archipelago and island airbase using your M61 Vulcan cannon and heat-seeking missiles.</p>
+  <div class="controls-grid">
+    <div><span class="key">W</span> / <span class="key">S</span> or <span class="key">↑</span>/<span class="key">↓</span> : Pitch Nose Down / Up</div>
+    <div><span class="key">A</span> / <span class="key">D</span> or <span class="key">←</span>/<span class="key">→</span> : Roll Left / Right</div>
+    <div><span class="key">Q</span> / <span class="key">E</span> : Rudder Yaw Left / Right</div>
+    <div><span class="key">Shift</span> / <span class="key">Ctrl</span> : Throttle Up / Down</div>
+    <div><span class="key">Space</span> : Fire 20mm Rotary Cannon</div>
+    <div><span class="key">F</span> : Launch Heat-Seeking Missile</div>
+    <div><span class="key">C</span> : Toggle Chase / Cockpit View</div>
+    <div><span class="key">R</span> : Reset / Respawn Jet</div>
+  </div>
+  <button id="start-btn">LAUNCH SORTIE</button>
+</div>
+
+<script>
+(() => {
+  // =========================================================================
+  // 1. AUDIO SYNTHESIZER (Web Audio API - Zero external assets)
+  // =========================================================================
+  let audioCtx = null;
+  let engineOsc = null, engineGain = null, noiseGain = null;
+  let soundEnabled = true;
+
+  function initAudio() {
+    if (audioCtx) return;
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    audioCtx = new AudioContext();
+
+    // Jet turbine hum
+    engineOsc = audioCtx.createOscillator();
+    engineOsc.type = 'sawtooth';
+    engineOsc.frequency.value = 65;
+
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 220;
+
+    engineGain = audioCtx.createGain();
+    engineGain.gain.value = 0.06;
+
+    engineOsc.connect(filter);
+    filter.connect(engineGain);
+    engineGain.connect(audioCtx.destination);
+    engineOsc.start();
+
+    // Afterburner white noise
+    const bufferSize = audioCtx.sampleRate * 2;
+    const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = noiseBuffer;
+    noise.loop = true;
+
+    const noiseFilter = audioCtx.createBiquadFilter();
+    noiseFilter.type = 'bandpass';
+    noiseFilter.frequency.value = 450;
+
+    noiseGain = audioCtx.createGain();
+    noiseGain.gain.value = 0.03;
+
+    noise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(audioCtx.destination);
+    noise.start();
+  }
+
+  function playGunSound() {
+    if (!audioCtx || !soundEnabled) return;
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(160, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(45, audioCtx.currentTime + 0.06);
+    g.gain.setValueAtTime(0.08, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.06);
+    osc.connect(g); g.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.06);
+  }
+
+  function playMissileSound() {
+    if (!audioCtx || !soundEnabled) return;
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(520, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(140, audioCtx.currentTime + 0.45);
+    g.gain.setValueAtTime(0.14, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.45);
+    osc.connect(g); g.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.45);
+  }
+
+  function playExplosionSound() {
+    if (!audioCtx || !soundEnabled) return;
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(110, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(22, audioCtx.currentTime + 0.65);
+    g.gain.setValueAtTime(0.28, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.65);
+    osc.connect(g); g.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.65);
+  }
+
+  // =========================================================================
+  // 2. 3D VECTOR & MATRIX MATH LIBRARY
+  // =========================================================================
+  const Vec3 = {
+    add: (a, b) => ({ x: a.x + b.x, y: a.y + b.y, z: a.z + b.z }),
+    sub: (a, b) => ({ x: a.x - b.x, y: a.y - b.y, z: a.z - b.z }),
+    scale: (v, s) => ({ x: v.x * s, y: v.y * s, z: v.z * s }),
+    dot: (a, b) => a.x * b.x + a.y * b.y + a.z * b.z,
+    cross: (a, b) => ({
+      x: a.y * b.z - a.z * b.y,
+      y: a.z * b.x - a.x * b.z,
+      z: a.x * b.y - a.y * b.x
+    }),
+    len: (v) => Math.hypot(v.x, v.y, v.z),
+    norm: (v) => {
+      const l = Math.hypot(v.x, v.y, v.z) || 1;
+      return { x: v.x / l, y: v.y / l, z: v.z / l };
+    }
+  };
+
+  // Orthonormal basis orientation (right, up, forward)
+  function createBasis() {
+    return {
+      right: { x: 1, y: 0, z: 0 },
+      up: { x: 0, y: 1, z: 0 },
+      forward: { x: 0, y: 0, z: 1 }
+    };
+  }
+
+  function rotateVectorAroundAxis(v, axis, angle) {
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    const dot = Vec3.dot(axis, v);
+    const cross = Vec3.cross(axis, v);
+    return {
+      x: v.x * cos + cross.x * sin + axis.x * dot * (1 - cos),
+      y: v.y * cos + cross.y * sin + axis.y * dot * (1 - cos),
+      z: v.z * cos + cross.z * sin + axis.z * dot * (1 - cos)
+    };
+  }
+
+  function rotateBasis(basis, pitch, yaw, roll) {
+    if (pitch !== 0) {
+      basis.forward = Vec3.norm(rotateVectorAroundAxis(basis.forward, basis.right, pitch));
+      basis.up = Vec3.norm(Vec3.cross(basis.forward, basis.right));
+    }
+    if (yaw !== 0) {
+      basis.forward = Vec3.norm(rotateVectorAroundAxis(basis.forward, basis.up, yaw));
+      basis.right = Vec3.norm(Vec3.cross(basis.up, basis.forward));
+    }
+    if (roll !== 0) {
+      basis.right = Vec3.norm(rotateVectorAroundAxis(basis.right, basis.forward, roll));
+      basis.up = Vec3.norm(Vec3.cross(basis.forward, basis.right));
+    }
+    // Re-orthogonalize to prevent drift
+    basis.forward = Vec3.norm(basis.forward);
+    basis.right = Vec3.norm(Vec3.cross(basis.up, basis.forward));
+    basis.up = Vec3.norm(Vec3.cross(basis.forward, basis.right));
+  }
+
+  function localToWorld(localPt, pos, basis) {
+    return {
+      x: pos.x + basis.right.x * localPt.x + basis.up.x * localPt.y + basis.forward.x * localPt.z,
+      y: pos.y + basis.right.y * localPt.x + basis.up.y * localPt.y + basis.forward.y * localPt.z,
+      z: pos.z + basis.right.z * localPt.x + basis.up.z * localPt.y + basis.forward.z * localPt.z
+    };
+  }
+
+  // =========================================================================
+  // 3. 3D MESH DEFINITIONS (Fighter Jet, Carrier/Runway, Islands, Clouds)
+  // =========================================================================
+  function buildJetMesh(primaryColor, accentColor, canopyColor) {
+    // Vertices in local jet coordinates (+Z is nose, +Y is up, +X is right wing)
+    const v = [
+      { x: 0, y: 0.1, z: 4.8 },     // 0: Nose tip
+      { x: -0.55, y: 0.35, z: 1.8 },// 1: Left cockpit base
+      { x: 0.55, y: 0.35, z: 1.8 }, // 2: Right cockpit base
+      { x: 0, y: 0.95, z: 1.1 },    // 3: Canopy peak
+      { x: -0.7, y: 0.35, z: -0.5 },// 4: Left mid fuselage top
+      { x: 0.7, y: 0.35, z: -0.5 }, // 5: Right mid fuselage top
+      { x: -0.65, y: -0.35, z: 1.5},// 6: Left belly front
+      { x: 0.65, y: -0.35, z: 1.5}, // 7: Right belly front
+      { x: -0.75, y: -0.35, z: -3.4},// 8: Left tail base
+      { x: 0.75, y: -0.35, z: -3.4}, // 9: Right tail base
+      { x: -0.6, y: 0.35, z: -3.4}, // 10: Left tail top
+      { x: 0.6, y: 0.35, z: -3.4},  // 11: Right tail top
+      // Main Delta Wings
+      { x: -4.4, y: 0.0, z: -2.4 }, // 12: Left wingtip front
+      { x: -4.4, y: 0.0, z: -3.3 }, // 13: Left wingtip back
+      { x: 4.4, y: 0.0, z: -2.4 },  // 14: Right wingtip front
+      { x: 4.4, y: 0.0, z: -3.3 },  // 15: Right wingtip back
+      // Twin Vertical Stabilizers
+      { x: -1.1, y: 1.85, z: -3.2 },// 16: Left fin tip
+      { x: 1.1, y: 1.85, z: -3.2 }, // 17: Right fin tip
+      // Horizontal Stabilators
+      { x: -2.1, y: -0.05, z: -3.8},// 18: Left elevator tip
+      { x: 2.1, y: -0.05, z: -3.8 },// 19: Right elevator tip
+      // Exhaust core
+      { x: 0, y: 0, z: -3.6 }       // 20: Exhaust center
+    ];
+
+    const faces = [
+      // Nose cone
+      { idx: [0, 2, 1], color: primaryColor },
+      { idx: [0, 1, 6], color: primaryColor },
+      { idx: [0, 7, 2], color: primaryColor },
+      { idx: [0, 6, 7], color: accentColor },
+      // Canopy
+      { idx: [1, 2, 3], color: canopyColor, emissive: true },
+      { idx: [1, 3, 4], color: canopyColor, emissive: true },
+      { idx: [2, 5, 3], color: canopyColor, emissive: true },
+      { idx: [3, 5, 4], color: canopyColor, emissive: true },
+      // Fuselage sides & top
+      { idx: [4, 5, 11, 10], color: primaryColor },
+      { idx: [1, 4, 8, 6], color: accentColor },
+      { idx: [2, 7, 9, 5], color: accentColor },
+      { idx: [6, 8, 9, 7], color: '#3a4654' },
+      // Left & Right Main Wings
+      { idx: [4, 12, 13, 10], color: primaryColor },
+      { idx: [6, 8, 13, 12], color: accentColor },
+      { idx: [5, 11, 15, 14], color: primaryColor },
+      { idx: [7, 14, 15, 9], color: accentColor },
+      // Vertical Fins
+      { idx: [4, 16, 10], color: accentColor },
+      { idx: [10, 16, 4], color: accentColor },
+      { idx: [5, 11, 17], color: accentColor },
+      { idx: [11, 5, 17], color: accentColor },
+      // Horizontal Tail
+      { idx: [10, 18, 8], color: primaryColor },
+      { idx: [11, 9, 19], color: primaryColor },
+      // Afterburner Glow
+      { idx: [10, 11, 9, 8], color: '#ff6a00', emissive: true }
+    ];
+
+    return { v, faces };
+  }
+
+  const playerMesh = buildJetMesh('#7d8c9e', '#4c5b6b', '#00e5ff');
+  const enemyMesh = buildJetMesh('#8c2d2d', '#4a1818', '#ffcc00');
+
+  // Procedural Terrain Height Function
+  function getTerrainHeight(x, z) {
+    // Runway flat island near origin
+    if (Math.abs(x) < 180 && Math.abs(z - 400) < 650) {
+      return 12;
+    }
+    const s1 = Math.sin(x * 0.0014) * Math.cos(z * 0.0014);
+    const s2 = Math.sin(x * 0.0037 + 1.3) * Math.sin(z * 0.0031 + 0.7) * 0.45;
+    const s3 = Math.cos((x + z) * 0.007) * 0.15;
+    const h = (s1 + s2 + s3) * 420 - 80;
+    return h > 0 ? h : 0; // 0 is ocean sea level
+  }
+
+  // =========================================================================
+  // 4. GAME STATE & ENTITIES
+  // =========================================================================
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  const radarCanvas = document.getElementById('radar');
+  const rCtx = radarCanvas.getContext('2d');
+
+  let width = canvas.width = window.innerWidth;
+  let height = canvas.height = window.innerHeight;
+  window.addEventListener('resize', () => {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+  });
+
+  const keys = {};
+  window.addEventListener('keydown', e => {
+    keys[e.code] = true;
+    if (e.code === 'KeyC') {
+      state.cockpitView = !state.cockpitView;
+      document.getElementById('cam-mode').textContent = state.cockpitView ? 'COCKPIT' : 'CHASE';
+    }
+    if (e.code === 'KeyM') {
+      soundEnabled = !soundEnabled;
+      document.getElementById('snd-state').textContent = soundEnabled ? 'ON' : 'OFF';
+      if (engineGain) engineGain.gain.value = soundEnabled ? 0.06 : 0;
+      if (noiseGain) noiseGain.gain.value = soundEnabled ? 0.03 : 0;
+    }
+    if (e.code === 'KeyP') {
+      state.paused = !state.paused;
+      showMessage(state.paused ? 'SIMULATION PAUSED' : 'RESUMED');
+    }
+    if (e.code === 'KeyR') {
+      resetPlayer();
+    }
+    if (e.code === 'KeyF' && state.running && !state.paused) {
+      fireMissile();
+    }
+  });
+  window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+  const state = {
+    running: false,
+    paused: false,
+    cockpitView: false,
+    score: 0,
+    bullets: [],
+    missiles: [],
+    particles: [],
+    enemies: [],
+    clouds: [],
+    gunCooldown: 0,
+    missileCooldown: 0
+  };
+
+  const player = {
+    pos: { x: 0, y: 450, z: -200 },
+    basis: createBasis(),
+    speed: 140,       // world units/sec
+    throttle: 0.65,   // 0.0 to 1.0
+    hp: 100,
+    missiles: 8,
+    rollRate: 0,
+    pitchRate: 0,
+    yawRate: 0
+  };
+
+  function resetPlayer() {
+    player.pos = { x: 0, y: 550, z: -300 };
+    player.basis = createBasis();
+    player.speed = 150;
+    player.throttle = 0.7;
+    player.hp = 100;
+    player.missiles = 8;
+    player.rollRate = 0;
+    player.pitchRate = 0;
+    player.yawRate = 0;
+    showMessage('AIRCRAFT READY');
+  }
+
+  function spawnEnemies(count) {
+    state.enemies = [];
+    for (let i = 0; i < count; i++) {
+      const angle = (i / count) * Math.PI * 2;
+      const dist = 1600 + Math.random() * 1400;
+      const eBasis = createBasis();
+      rotateBasis(eBasis, 0, angle + Math.PI, 0);
+      state.enemies.push({
+        pos: {
+          x: Math.cos(angle) * dist,
+          y: 450 + Math.random() * 450,
+          z: 800 + Math.sin(angle) * dist
+        },
+        basis: eBasis,
+        speed: 115 + Math.random() * 25,
+        hp: 100,
+        fireTimer: 1 + Math.random() * 2,
+        aiPhase: Math.random() * 10
+      });
+    }
+  }
+
+  function initClouds() {
+    state.clouds = [];
+    for (let i = 0; i < 45; i++) {
+      state.clouds.push({
+        x: (Math.random() - 0.5) * 9000,
+        y: 850 + Math.random() * 550,
+        z: (Math.random() - 0.5) * 9000,
+        size: 140 + Math.random() * 180
+      });
+    }
+  }
+
+  let msgTimeout = null;
+  function showMessage(text, color = '#00ff88') {
+    const el = document.getElementById('msg-box');
+    el.textContent = text;
+    el.style.color = color;
+    el.style.opacity = '1';
+    clearTimeout(msgTimeout);
+    msgTimeout = setTimeout(() => { el.style.opacity = '0'; }, 1600);
+  }
+
+  // =========================================================================
+  // 5. WEAPONS & PARTICLES
+  // =========================================================================
+  function fireCannon(shooter, isPlayer) {
+    const offsets = [{ x: -0.9, y: -0.1, z: 3.5 }, { x: 0.9, y: -0.1, z: 3.5 }];
+    offsets.forEach(off => {
+      const spawnPos = localToWorld(off, shooter.pos, shooter.basis);
+      state.bullets.push({
+        pos: spawnPos,
+        vel: Vec3.scale(shooter.basis.forward, shooter.speed + 480),
+        life: 1.8,
+        isPlayer
+      });
+    });
+    if (isPlayer) playGunSound();
+  }
+
+  function fireMissile() {
+    if (player.missiles <= 0 || state.missileCooldown > 0) return;
+    player.missiles--;
+    state.missileCooldown = 0.6;
+    playMissileSound();
+
+    // Find best enemy in front cone
+    let bestTarget = null;
+    let bestDot = 0.65;
+    state.enemies.forEach(en => {
+      const toEn = Vec3.norm(Vec3.sub(en.pos, player.pos));
+      const d = Vec3.dot(player.basis.forward, toEn);
+      if (d > bestDot) {
+        bestDot = d;
+        bestTarget = en;
+      }
+    });
+
+    const spawnPos = localToWorld({ x: 0, y: -0.6, z: 1.5 }, player.pos, player.basis);
+    state.missiles.push({
+      pos: spawnPos,
+      dir: { ...player.basis.forward },
+      speed: player.speed + 260,
+      target: bestTarget,
+      life: 6.0
+    });
+    showMessage(bestTarget ? 'FOX-2 // TARGET LOCKED' : 'FOX-2 // DUMBFIRE', '#00e5ff');
+  }
+
+  function spawnExplosion(pos, count = 24, scale = 1) {
+    playExplosionSound();
+    const colors = ['#ffdd44', '#ff7700', '#ff2200', '#555555'];
+    for (let i = 0; i < count; i++) {
+      state.particles.push({
+        pos: { ...pos },
+        vel: {
+          x: (Math.random() - 0.5) * 90 * scale,
+          y: (Math.random() - 0.5) * 90 * scale,
+          z: (Math.random() - 0.5) * 90 * scale
+        },
+        life: 0.6 + Math.random() * 0.7,
+        maxLife: 1.3,
+        size: (4 + Math.random() * 8) * scale,
+        color: colors[Math.floor(Math.random() * colors.length)]
+      });
+    }
+  }
+
+  // =========================================================================
+  // 6. SIMULATION UPDATE (FLIGHT DYNAMICS & AI)
+  // =========================================================================
+  function update(dt) {
+    if (!state.running || state.paused) return;
+
+    // Throttle control
+    if (keys['ShiftLeft'] || keys['ShiftRight']) player.throttle = Math.min(1, player.throttle + dt * 0.45);
+    if (keys['ControlLeft'] || keys['ControlRight']) player.throttle = Math.max(0.15, player.throttle - dt * 0.45);
+
+    // Aerodynamic flight physics
+    const targetSpeed = 65 + player.throttle * 215; // 65 to 280 units/s
+    // Gravity & climb energy trade-off
+    const climbFactor = player.basis.forward.y;
+    player.speed += (targetSpeed - player.speed) * dt * 1.4 - climbFactor * 38 * dt;
+    player.speed = Math.max(45, Math.min(320, player.speed));
+
+    // Control inputs with smooth angular damping
+    const pitchInput = (keys['KeyS'] || keys['ArrowDown'] ? 1 : 0) - (keys['KeyW'] || keys['ArrowUp'] ? 1 : 0);
+    const rollInput  = (keys['KeyA'] || keys['ArrowLeft'] ? 1 : 0) - (keys['KeyD'] || keys['ArrowRight'] ? 1 : 0);
+    const yawInput   = (keys['KeyE'] ? 1 : 0) - (keys['KeyQ'] ? 1 : 0);
+
+    const authority = Math.min(1.2, player.speed / 120);
+    player.pitchRate += (pitchInput * 1.45 * authority - player.pitchRate) * dt * 6;
+    player.rollRate  += (rollInput  * 2.40 * authority - player.rollRate)  * dt * 7;
+    player.yawRate   += (yawInput   * 0.65 * authority - player.yawRate)   * dt * 5;
+
+    // Auto bank-to-turn slight coupling
+    const bankTurn = -player.basis.right.y * 0.35;
+    rotateBasis(player.basis, player.pitchRate * dt, (player.yawRate + bankTurn) * dt, player.rollRate * dt);
+
+    // Move forward + slight gravity drop if slow
+    const stallDrop = player.speed < 75 ? (75 - player.speed) * 0.45 : 0;
+    player.pos = Vec3.add(player.pos, Vec3.scale(player.basis.forward, player.speed * dt));
+    player.pos.y -= stallDrop * dt;
+
+    // Update engine audio pitch
+    if (engineOsc && soundEnabled) {
+      engineOsc.frequency.value = 55 + player.throttle * 75 + (player.speed / 300) * 30;
+      noiseGain.gain.value = 0.015 + player.throttle * 0.055;
+    }
+
+    // Terrain & Ocean Collision
+    const groundH = getTerrainHeight(player.pos.x, player.pos.z);
+    if (player.pos.y <= groundH + 3) {
+      spawnExplosion(player.pos, 35, 1.5);
+      showMessage('CRASHED INTO TERRAIN - RESPAWNING', '#ff3b3b');
+      resetPlayer();
+    }
+
+    // Weapons cooldown & firing
+    state.gunCooldown = Math.max(0, state.gunCooldown - dt);
+    state.missileCooldown = Math.max(0, state.missileCooldown - dt);
+    if (keys['Space'] && state.gunCooldown <= 0) {
+      fireCannon(player, true);
+      state.gunCooldown = 0.085;
+    }
+
+    // Update Bullets
+    for (let i = state.bullets.length - 1; i >= 0; i--) {
+      const b = state.bullets[i];
+      b.pos = Vec3.add(b.pos, Vec3.scale(b.vel, dt));
+      b.life -= dt;
+      if (b.life <= 0 || b.pos.y <= getTerrainHeight(b.pos.x, b.pos.z)) {
+        state.bullets.splice(i, 1);
+        continue;
+      }
+      if (b.isPlayer) {
+        for (let j = state.enemies.length - 1; j >= 0; j--) {
+          const en = state.enemies[j];
+          if (Vec3.len(Vec3.sub(b.pos, en.pos)) < 14) {
+            en.hp -= 20;
+            state.bullets.splice(i, 1);
+            if (en.hp <= 0) {
+              spawnExplosion(en.pos, 28, 1.3);
+              state.enemies.splice(j, 1);
+              state.score += 500;
+              showMessage('BOGEY SPLASHED! +500');
+            }
+            break;
+          }
+        }
+      } else {
+        if (Vec3.len(Vec3.sub(b.pos, player.pos)) < 10) {
+          player.hp -= 8;
+          state.bullets.splice(i, 1);
+          showMessage('WARNING: HULL HIT!', '#ff3b3b');
+          if (player.hp <= 0) {
+            spawnExplosion(player.pos, 35, 1.5);
+            showMessage('SHOT DOWN - RESPAWNING', '#ff3b3b');
+            resetPlayer();
+          }
+        }
+      }
+    }
+
+    // Update Missiles
+    for (let i = state.missiles.length - 1; i >= 0; i--) {
+      const m = state.missiles[i];
+      m.life -= dt;
+      if (m.target && m.target.hp > 0) {
+        const desired = Vec3.norm(Vec3.sub(m.target.pos, m.pos));
+        m.dir = Vec3.norm(Vec3.add(Vec3.scale(m.dir, 1 - dt * 3.5), Vec3.scale(desired, dt * 3.5)));
+      }
+      m.pos = Vec3.add(m.pos, Vec3.scale(m.dir, m.speed * dt));
+
+      // Smoke trail
+      if (Math.random() < 0.7) {
+        state.particles.push({
+          pos: { ...m.pos },
+          vel: { x: (Math.random()-0.5)*5, y: (Math.random()-0.5)*5, z: (Math.random()-0.5)*5 },
+          life: 0.5, maxLife: 0.5, size: 3.5, color: '#dddddd'
+        });
+      }
+
+      let hit = false;
+      for (let j = state.enemies.length - 1; j >= 0; j--) {
+        const en = state.enemies[j];
+        if (Vec3.len(Vec3.sub(m.pos, en.pos)) < 22) {
+          spawnExplosion(en.pos, 32, 1.5);
+          state.enemies.splice(j, 1);
+          state.score += 750;
+          showMessage('MISSILE DIRECT HIT! +750', '#00e5ff');
+          hit = true;
+          break;
+        }
+      }
+      if (hit || m.life <= 0 || m.pos.y <= getTerrainHeight(m.pos.x, m.pos.z)) {
+        if (!hit && m.pos.y <= getTerrainHeight(m.pos.x, m.pos.z)) spawnExplosion(m.pos, 12, 0.7);
+        state.missiles.splice(i, 1);
+      }
+    }
+
+    // Update Enemy Fighter AI
+    state.enemies.forEach(en => {
+      en.aiPhase += dt;
+      const toPlayer = Vec3.sub(player.pos, en.pos);
+      const dist = Vec3.len(toPlayer);
+      const dirToPlayer = Vec3.norm(toPlayer);
+
+      // Desired target point (evade if too close, otherwise pursue)
+      let targetDir = dirToPlayer;
+      if (dist < 220) {
+        targetDir = Vec3.norm({ x: Math.sin(en.aiPhase), y: 0.3, z: Math.cos(en.aiPhase) });
+      }
+      // Avoid terrain
+      const aheadTerrain = getTerrainHeight(en.pos.x + en.basis.forward.x * 180, en.pos.z + en.basis.forward.z * 180);
+      if (en.pos.y < aheadTerrain + 140) {
+        targetDir = Vec3.norm({ x: targetDir.x, y: 0.85, z: targetDir.z });
+      }
+
+      // Steer basis smoothly toward targetDir
+      const rightDot = Vec3.dot(en.basis.right, targetDir);
+      const upDot = Vec3.dot(en.basis.up, targetDir);
+      rotateBasis(en.basis, upDot * 1.1 * dt, rightDot * 1.1 * dt, -rightDot * 1.5 * dt);
+
+      en.pos = Vec3.add(en.pos, Vec3.scale(en.basis.forward, en.speed * dt));
+
+      // Enemy firing logic
+      en.fireTimer -= dt;
+      if (dist < 1100 && Vec3.dot(en.basis.forward, dirToPlayer) > 0.92 && en.fireTimer <= 0) {
+        fireCannon(en, false);
+        en.fireTimer = 1.4 + Math.random() * 1.2;
+      }
+    });
+
+    // Respawn wave if all enemies destroyed
+    if (state.enemies.length === 0) {
+      player.missiles = Math.min(8, player.missiles + 4);
+      player.hp = Math.min(100, player.hp + 25);
+      showMessage('WAVE CLEARED! NEW SQUADRON INBOUND', '#00e5ff');
+      spawnEnemies(5);
+    }
+
+    // Update Particles
+    for (let i = state.particles.length - 1; i >= 0; i--) {
+      const p = state.particles[i];
+      p.pos = Vec3.add(p.pos, Vec3.scale(p.vel, dt));
+      p.life -= dt;
+      if (p.life <= 0) state.particles.splice(i, 1);
+    }
+
+    // Update HUD Readouts
+    document.getElementById('spd-val').textContent = Math.round(player.speed * 2.8);
+    document.getElementById('alt-val').textContent = Math.max(0, Math.round(player.pos.y * 8));
+    const hdg = Math.round(((Math.atan2(player.basis.forward.x, player.basis.forward.z) * 180 / Math.PI) + 360) % 360);
+    document.getElementById('hdg-val').textContent = String(hdg).padStart(3, '0');
+    document.getElementById('thr-val').textContent = Math.round(player.throttle * 100);
+    document.getElementById('thr-bar').style.width = (player.throttle * 100) + '%';
+    document.getElementById('score-val').textContent = state.score;
+    document.getElementById('enemy-val').textContent = state.enemies.length;
+    document.getElementById('msl-val').textContent = player.missiles;
+    document.getElementById('hp-val').textContent = Math.max(0, player.hp);
+    document.getElementById('hp-bar').style.width = Math.max(0, player.hp) + '%';
+
+    const stallEl = document.getElementById('stall-warn');
+    stallEl.style.display = (player.speed < 75 || player.pos.y - groundH < 45) ? 'block' : 'none';
+  }
+
+  // =========================================================================
+  // 7. 3D SOFTWARE RASTERIZER & PAINTER'S ALGORITHM RENDERER
+  // =========================================================================
+  const FOV = 680;
+  const lightDir = Vec3.norm({ x: 0.45, y: 0.85, z: 0.35 });
+
+  function worldToCamera(pt, camPos, camBasis) {
+    const rel = Vec3.sub(pt, camPos);
+    return {
+      x: Vec3.dot(rel, camBasis.right),
+      y: Vec3.dot(rel, camBasis.up),
+      z: Vec3.dot(rel, camBasis.forward)
+    };
+  }
+
+  function projectCamPoint(cPt) {
+    const z = Math.max(0.5, cPt.z);
+    const scale = FOV / z;
+    return {
+      x: width * 0.5 + cPt.x * scale,
+      y: height * 0.5 - cPt.y * scale,
+      z: cPt.z
+    };
+  }
+
+  function shadeColor(hex, factor) {
+    const num = parseInt(hex.slice(1), 16);
+    const r = Math.min(255, Math.max(0, Math.round(((num >> 16) & 255) * factor)));
+    const g = Math.min(255, Math.max(0, Math.round(((num >> 8) & 255) * factor)));
+    const b = Math.min(255, Math.max(0, Math.round((num & 255) * factor)));
+    return `rgb(${r},${g},${b})`;
+  }
+
+  function render() {
+    // Camera setup
+    let camPos, camBasis;
+    if (state.cockpitView) {
+      camPos = localToWorld({ x: 0, y: 0.95, z: 1.4 }, player.pos, player.basis);
+      camBasis = player.basis;
+    } else {
+      const offset = Vec3.add(
+        Vec3.scale(player.basis.forward, -22),
+        Vec3.scale(player.basis.up, 5.2)
+      );
+      camPos = Vec3.add(player.pos, offset);
+      camBasis = player.basis;
+    }
+
+    // 1. Sky Gradient Background
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, height);
+    skyGrad.addColorStop(0, '#0a2342');
+    skyGrad.addColorStop(0.55, '#2c699a');
+    skyGrad.addColorStop(1, '#7ec8e3');
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, width, height);
+
+    const renderList = []; // Collect 3D polygons for depth-sorting
+
+    // 2. Terrain & Ocean Grid around Player
+    const tileSize = 260;
+    const gridRadius = 11;
+    const snapX = Math.floor(camPos.x / tileSize) * tileSize;
+    const snapZ = Math.floor(camPos.z / tileSize) * tileSize;
+
+    for (let gx = -gridRadius; gx < gridRadius; gx++) {
+      for (let gz = -gridRadius; gz < gridRadius; gz++) {
+        const wx0 = snapX + gx * tileSize;
+        const wz0 = snapZ + gz * tileSize;
+        const wx1 = wx0 + tileSize;
+        const wz1 = wz0 + tileSize;
+
+        const c00 = worldToCamera({ x: wx0, y: getTerrainHeight(wx0, wz0), z: wz0 }, camPos, camBasis);
+        const c10 = worldToCamera({ x: wx1, y: getTerrainHeight(wx1, wz0), z: wz0 }, camPos, camBasis);
+        const c11 = worldToCamera({ x: wx1, y: getTerrainHeight(wx1, wz1), z: wz1 }, camPos, camBasis);
+        const c01 = worldToCamera({ x: wx0, y: getTerrainHeight(wx0, wz1), z: wz1 }, camPos, camBasis);
+
+        if (c00.z < 5 && c10.z < 5 && c11.z < 5 && c01.z < 5) continue;
+
+        const avgZ = (c00.z + c10.z + c11.z + c01.z) * 0.25;
+        const h00 = getTerrainHeight(wx0, wz0);
+        const h11 = getTerrainHeight(wx1, wz1);
+        const avgH = (h00 + h11) * 0.5;
+
+        let baseCol = '#0d4f8b'; // Deep ocean
+        if (Math.abs(wx0) < 160 && Math.abs(wz0 - 400) < 620) {
+          baseCol = (Math.abs(wx0) < 35) ? '#333840' : '#3b7a3e'; // Runway & airbase grass
+        } else if (avgH > 230) {
+          baseCol = '#d8e2e8'; // Snow peaks
+        } else if (avgH > 85) {
+          baseCol = '#4f6d4a'; // Mountain forest
+        } else if (avgH > 4) {
+          baseCol = '#689f52'; // Coastal green
+        } else {
+          // Subtle ocean wave shimmer
+          const wave = Math.sin((wx0 + wz0) * 0.01 + performance.now() * 0.002) * 0.08;
+          baseCol = shadeColor('#105a9c', 0.95 + wave);
+        }
+
+        // Distance atmospheric haze blend
+        const fog = Math.min(1, avgZ / (gridRadius * tileSize * 0.92));
+        renderList.push({
+          depth: avgZ,
+          pts: [projectCamPoint(c00), projectCamPoint(c10), projectCamPoint(c11), projectCamPoint(c01)],
+          color: baseCol,
+          stroke: avgH <= 4 ? 'rgba(130, 210, 255, 0.14)' : 'rgba(20, 40, 25, 0.22)',
+          fog
+        });
+      }
+    }
+
+    // Helper to queue 3D Mesh (Player & Enemies)
+    function queueMesh(mesh, pos, basis, scale = 1.6) {
+      const camVerts = mesh.v.map(lv => {
+        const wv = localToWorld(Vec3.scale(lv, scale), pos, basis);
+        return worldToCamera(wv, camPos, camBasis);
+      });
+
+      mesh.faces.forEach(f => {
+        const pts3 = f.idx.map(i => camVerts[i]);
+        if (pts3.some(p => p.z <= 1.2)) return;
+
+        // Backface culling in camera space
+        const e1 = Vec3.sub(pts3[1], pts3[0]);
+        const e2 = Vec3.sub(pts3[2], pts3[0]);
+        const normal = Vec3.norm(Vec3.cross(e1, e2));
+        if (Vec3.dot(normal, pts3[0]) >= 0) return;
+
+        // Directional lighting
+        const worldNormal = localToWorld(normal, { x: 0, y: 0, z: 0 }, camBasis);
+        const lum = f.emissive ? 1.15 : (0.52 + Math.max(0, Vec3.dot(worldNormal, lightDir)) * 0.65);
+        const depth = pts3.reduce((acc, p) => acc + p.z, 0) / pts3.length;
+
+        renderList.push({
+          depth,
+          pts: pts3.map(projectCamPoint),
+          color: shadeColor(f.color, lum),
+          stroke: 'rgba(0,0,0,0.28)',
+          fog: 0
+        });
+      });
+    }
+
+    // 3. Queue Player Jet (if in Chase camera)
+    if (!state.cockpitView) {
+      queueMesh(playerMesh, player.pos, player.basis, 1.55);
+    }
+
+    // 4. Queue Enemy Jets
+    state.enemies.forEach(en => {
+      queueMesh(enemyMesh, en.pos, en.basis, 1.85);
+    });
+
+    // Sort back-to-front
+    renderList.sort((a, b) => b.depth - a.depth);
+
+    // Draw all sorted polygons
+    for (let i = 0; i < renderList.length; i++) {
+      const poly = renderList[i];
+      ctx.beginPath();
+      ctx.moveTo(poly.pts[0].x, poly.pts[0].y);
+      for (let j = 1; j < poly.pts.length; j++) {
+        ctx.lineTo(poly.pts[j].x, poly.pts[j].y);
+      }
+      ctx.closePath();
+      ctx.fillStyle = poly.color;
+      ctx.fill();
+      if (poly.stroke) {
+        ctx.strokeStyle = poly.stroke;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+      if (poly.fog > 0.05) {
+        ctx.fillStyle = `rgba(126, 200, 227, ${poly.fog * 0.85})`;
+        ctx.fill();
+      }
+    }
+
+    // 5. Render Volumetric Clouds
+    state.clouds.forEach(cl => {
+      const cPt = worldToCamera(cl, camPos, camBasis);
+      if (cPt.z > 20 && cPt.z < 5500) {
+        const p = projectCamPoint(cPt);
+        const r = (cl.size * FOV) / cPt.z;
+        ctx.fillStyle = 'rgba(245, 250, 255, 0.35)';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+        ctx.arc(p.x + r * 0.7, p.y + r * 0.15, r * 0.75, 0, Math.PI * 2);
+        ctx.arc(p.x - r * 0.7, p.y + r * 0.2, r * 0.7, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    });
+
+    // 6. Render Bullets & Missiles
+    state.bullets.forEach(b => {
+      const cPt = worldToCamera(b.pos, camPos, camBasis);
+      if (cPt.z > 2) {
+        const p = projectCamPoint(cPt);
+        ctx.fillStyle = b.isPlayer ? '#fff066' : '#ff4444';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, Math.max(2, 1800 / cPt.z), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    });
+
+    state.missiles.forEach(m => {
+      const cPt = worldToCamera(m.pos, camPos, camBasis);
+      if (cPt.z > 2) {
+        const p = projectCamPoint(cPt);
+        ctx.fillStyle = '#00ffff';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, Math.max(3.5, 2600 / cPt.z), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    });
+
+    // 7. Render Explosion & Smoke Particles
+    state.particles.forEach(pt => {
+      const cPt = worldToCamera(pt.pos, camPos, camBasis);
+      if (cPt.z > 2) {
+        const p = projectCamPoint(cPt);
+        const rad = Math.max(2, (pt.size * FOV) / cPt.z);
+        ctx.globalAlpha = Math.max(0, pt.life / pt.maxLife);
+        ctx.fillStyle = pt.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, rad, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    });
+
+    // 8. Target Lead Reticles on Screen
+    state.enemies.forEach(en => {
+      const cPt = worldToCamera(en.pos, camPos, camBasis);
+      if (cPt.z > 10) {
+        const p = projectCamPoint(cPt);
+        const dist = Math.round(Vec3.len(Vec3.sub(en.pos, player.pos)));
+        ctx.strokeStyle = '#ff3b3b';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(p.x - 16, p.y - 16, 32, 32);
+        ctx.fillStyle = '#ff3b3b';
+        ctx.font = '11px Courier New';
+        ctx.fillText(`TGT ${dist}m`, p.x - 22, p.y - 21);
+      }
+    });
+
+    // 9. Cockpit Canopy Frame Overlay
+    if (state.cockpitView) {
+      ctx.strokeStyle = '#18242e';
+      ctx.lineWidth = 14;
+      ctx.beginPath();
+      ctx.arc(width * 0.5, height * 0.62, Math.min(width, height) * 0.48, Math.PI, 0);
+      ctx.stroke();
+    }
+
+    // 10. Rotate HUD Pitch Ladder with Roll
+    const rollAngle = Math.atan2(player.basis.right.y, player.basis.up.y);
+    document.getElementById('pitch-ladder').setAttribute('transform', `rotate(${rollAngle * 180 / Math.PI} 70 70)`);
+
+    // 11. Draw Radar Minimap
+    drawRadar();
+  }
+
+  function drawRadar() {
+    rCtx.clearRect(0, 0, 150, 150);
+    rCtx.strokeStyle = 'rgba(0, 255, 136, 0.25)';
+    rCtx.lineWidth = 1;
+    [25, 50, 72].forEach(r => {
+      rCtx.beginPath();
+      rCtx.arc(75, 75, r, 0, Math.PI * 2);
+      rCtx.stroke();
+    });
+    rCtx.beginPath();
+    rCtx.moveTo(75, 0); rCtx.lineTo(75, 150);
+    rCtx.moveTo(0, 75); rCtx.lineTo(150, 75);
+    rCtx.stroke();
+
+    // Player center triangle
+    rCtx.fillStyle = '#00ff88';
+    rCtx.beginPath();
+    rCtx.moveTo(75, 69); rCtx.lineTo(71, 79); rCtx.lineTo(79, 79);
+    rCtx.closePath();
+    rCtx.fill();
+
+    // Enemies relative to player heading
+    const radarRange = 3500;
+    state.enemies.forEach(en => {
+      const rel = Vec3.sub(en.pos, player.pos);
+      const fwd = Vec3.dot(rel, player.basis.forward);
+      const rgt = Vec3.dot(rel, player.basis.right);
+      const rx = 75 + (rgt / radarRange) * 70;
+      const ry = 75 - (fwd / radarRange) * 70;
+      const distFromCenter = Math.hypot(rx - 75, ry - 75);
+      if (distFromCenter < 71) {
+        rCtx.fillStyle = '#ff3b3b';
+        rCtx.beginPath();
+        rCtx.arc(rx, ry, 3.5, 0, Math.PI * 2);
+        rCtx.fill();
+      }
+    });
+  }
+
+  // =========================================================================
+  // 8. MAIN LOOP & START TRIGGER
+  // =========================================================================
+  let lastTime = performance.now();
+  function loop(now) {
+    const dt = Math.min(0.05, (now - lastTime) / 1000);
+    lastTime = now;
+    update(dt);
+    render();
+    requestAnimationFrame(loop);
+  }
+
+  document.getElementById('start-btn').addEventListener('click', () => {
+    initAudio();
+    document.getElementById('overlay').style.display = 'none';
+    resetPlayer();
+    spawnEnemies(5);
+    initClouds();
+    state.running = true;
+    lastTime = performance.now();
+    requestAnimationFrame(loop);
+  });
+
+  // Initial background render behind menu
+  initClouds();
+  spawnEnemies(5);
+  render();
+})();
+</script>
+</body>
+</html>

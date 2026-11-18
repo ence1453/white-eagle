@@ -1,0 +1,2105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FINALS Spectator UI Patch</title>
+<style>
+:root{--panel:rgba(13,17,23,.86);--line:#232b35;--line2:#364250;--text:#e8edf2;--dim:#8592a0;--accent:#ffcc33}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:#0b0f14;color:var(--text);font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+#c.dragging{cursor:grabbing}
+#hud{position:fixed;inset:0;pointer-events:none}
+.panel{background:var(--panel);border:1px solid var(--line2);border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.35);backdrop-filter:blur(6px)}
+h3{margin:0 0 8px;font-size:11px;letter-spacing:.14em;color:var(--dim);font-weight:600;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}
+
+#topBar{position:absolute;top:10px;left:50%;transform:translateX(-50%);padding:8px 14px;display:flex;gap:16px;align-items:center;white-space:nowrap}
+.stat{display:flex;flex-direction:column;align-items:center;line-height:1.15;min-width:60px}
+.stat small{font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase}
+.stat b{font-size:18px;font-variant-numeric:tabular-nums}
+#objective{font-size:12px;font-weight:600;min-width:300px;display:flex;flex-direction:column;gap:3px}
+#objective div{display:flex;align-items:center;gap:7px}
+#objective i{font-style:normal;font-size:10px;color:#111;background:var(--dim);border-radius:3px;padding:0 4px;font-weight:800}
+.sep{width:1px;align-self:stretch;background:var(--line2)}
+.btns{display:flex;gap:4px;pointer-events:auto}
+button{font:inherit;font-size:12px;background:#1a212a;color:var(--text);border:1px solid var(--line2);border-radius:6px;padding:5px 9px;cursor:pointer;pointer-events:auto}
+button:hover{background:#25303b}
+button.active{background:var(--accent);color:#111;border-color:var(--accent);font-weight:700}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+select{font:inherit;font-size:12px;background:#1a212a;color:var(--text);border:1px solid var(--line2);border-radius:6px;padding:4px 6px;cursor:pointer;pointer-events:auto}
+button.small{font-size:10px;padding:2px 7px;letter-spacing:.06em}
+
+#mmWrap{position:absolute;left:10px;top:80px;padding:2px;overflow:hidden}
+#minimap{width:260px;height:170px;display:block;pointer-events:auto;cursor:crosshair;border-radius:8px}
+
+#scoreboard{position:absolute;right:10px;top:80px;width:330px;padding:10px 12px}
+.team{display:grid;grid-template-columns:16px 1fr auto;gap:8px;align-items:center;padding:7px 9px;border-left:3px solid var(--c);background:rgba(255,255,255,.035);border-radius:6px;margin-bottom:6px}
+.team:last-child{margin-bottom:0}
+.rank{color:var(--dim);font-weight:700;font-size:13px}
+.tn{color:var(--c);font-weight:700;display:flex;align-items:center;gap:8px}
+.ts{font-size:11px;color:var(--dim);margin-top:2px}
+.tgt{font-size:11px;color:#b8c2cc;margin-top:1px}
+.cash{font-weight:700;font-size:15px;font-variant-numeric:tabular-nums;text-align:right}
+.wipe{display:block;font-size:11px;color:#fff;background:#d33;border-radius:4px;padding:1px 5px;margin-top:3px;font-weight:800;letter-spacing:.04em;animation:blink 1s infinite alternate}
+@keyframes blink{to{background:#7a1a1a}}
+.proj{font-size:11px;color:var(--accent);font-weight:700;margin-top:1px}
+.team{position:relative}
+.team.rank-up{animation:rankUp 1.6s ease}
+.team.rank-down{animation:rankDown 1.6s ease}
+.team.rank-up .rank::after{content:'▲';position:absolute;left:3px;top:4px;font-size:9px;color:#7be38f;animation:arrow 1.6s ease forwards}
+.team.rank-down .rank::after{content:'▼';position:absolute;left:3px;bottom:4px;font-size:9px;color:#ff6b6b;animation:arrow 1.6s ease forwards}
+@keyframes rankUp{0%,30%{background:rgba(123,227,143,.22);box-shadow:0 0 0 1px rgba(123,227,143,.6)}100%{background:rgba(255,255,255,.035);box-shadow:none}}
+@keyframes rankDown{0%,30%{background:rgba(255,90,90,.18);box-shadow:0 0 0 1px rgba(255,90,90,.5)}100%{background:rgba(255,255,255,.035);box-shadow:none}}
+@keyframes arrow{0%{opacity:0;transform:scale(.4)}20%{opacity:1;transform:scale(1.3)}80%{opacity:1;transform:none}100%{opacity:0}}
+.pend{display:block;font-size:11px;color:#111;background:var(--accent);border-radius:4px;padding:1px 5px;margin-top:3px;font-weight:700}
+.pips{display:inline-flex;gap:3px}
+.roster{display:flex;flex-wrap:wrap;gap:3px 8px;margin-top:3px;font-size:11px;color:#d5dce3}
+.pl b{font-size:9px;color:var(--c);border:1px solid var(--c);border-radius:3px;padding:0 3px;margin-right:3px}
+.gd{display:inline-flex;gap:1px;margin-left:3px;vertical-align:1px}
+.gd i{font-style:normal;font-size:8px;font-weight:800;width:10px;height:10px;line-height:10px;text-align:center;border-radius:2px;background:#2a323c;color:#56616d}
+.gd i.on{background:#cfd8e2;color:#111}
+.pl.dead{opacity:.4;text-decoration:line-through}
+.pip{width:8px;height:8px;border-radius:50%;background:var(--c);display:inline-block}
+.pip.down{background:transparent;box-shadow:inset 0 0 0 1.5px var(--c),inset 0 0 0 3px #9aa3ad}
+.pip.dead{background:transparent;box-shadow:inset 0 0 0 1.5px var(--c);opacity:.45}
+.pip.carry{background:var(--accent);box-shadow:0 0 6px var(--accent)}
+
+#eventLog{position:absolute;left:10px;bottom:10px;width:390px;height:270px;padding:10px 12px;display:flex;flex-direction:column}
+#eventEntries{flex:1;overflow-y:auto;font-size:12px;pointer-events:auto;padding-right:4px}
+#eventEntries::-webkit-scrollbar{width:6px}
+#eventEntries::-webkit-scrollbar-thumb{background:var(--line2);border-radius:3px}
+.event{padding:3px 4px 3px 7px;border-bottom:1px solid var(--line);border-left:2px solid transparent;animation:fadeIn .25s ease}
+.event time{color:var(--dim);margin-right:7px;font-variant-numeric:tabular-nums}
+.event.cash{border-left-color:var(--accent)}
+.event.steal{border-left-color:#ff7b39;background:rgba(255,123,57,.07)}
+.event.vault{border-left-color:#b48cff}
+.event.rotate{color:var(--dim);font-style:italic}
+.event.kill{color:#c4ccd5}
+.event.major{background:rgba(255,204,51,.08);font-weight:600}
+#eventEntries.nokills .event.kill{display:none}
+@keyframes fadeIn{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:none}}
+
+#hint{position:absolute;right:10px;bottom:10px;padding:7px 11px;font-size:11px;color:var(--dim)}
+#hint kbd{font-family:inherit;background:#1a212a;border:1px solid var(--line2);border-radius:4px;padding:0 4px;color:var(--text)}
+
+#bracket{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:18px 22px;pointer-events:auto;display:none;width:min(1080px,calc(100% - 40px));max-height:calc(100% - 40px);overflow:auto;background:rgba(10,13,18,.95)}
+#bracket.show{display:block;animation:fadeIn .3s ease}
+#bkHead{text-align:center;margin-bottom:14px}
+#bkHead .kick{font-size:11px;letter-spacing:.2em;color:var(--dim);text-transform:uppercase}
+#bkHead .big{font-size:26px;font-weight:800;margin-top:4px}
+#bkCols{display:grid;grid-template-columns:1.15fr 1fr 1fr .9fr;gap:14px;align-items:center}
+.bcol h4{margin:0 0 6px;font-size:11px;letter-spacing:.14em;color:var(--accent);text-transform:uppercase}
+.bcol .mapn{font-size:11px;color:var(--dim);margin:-4px 0 8px}
+.grp{background:rgba(255,255,255,.03);border:1px solid var(--line2);border-radius:8px;padding:8px;margin-bottom:10px}
+.grp.live{border-color:var(--accent);box-shadow:0 0 0 1px rgba(255,204,51,.3)}
+.grp .gt{font-size:11px;color:var(--dim);display:flex;justify-content:space-between;margin-bottom:4px;text-transform:uppercase;letter-spacing:.08em}
+.grp .gt b{color:var(--accent);font-weight:700}
+.brow{display:grid;grid-template-columns:10px 1fr auto 18px;gap:7px;align-items:center;padding:3px 4px;border-radius:4px;font-size:13px}
+.brow .sw{width:10px;height:10px;border-radius:3px;background:var(--c)}
+.brow .nm{color:var(--c);font-weight:700}
+.brow .cs{font-variant-numeric:tabular-nums;color:#cfd6dd;font-size:12px}
+.brow .ok{color:#7be38f;font-weight:800;text-align:center}
+.brow.adv{background:rgba(123,227,143,.08)}
+.brow.out{opacity:.4}
+.brow.tbd .nm{color:var(--dim);font-weight:400;font-style:italic}
+.champ{text-align:center;padding:18px 10px;border:1px dashed var(--line2);border-radius:10px}
+.champ .cup{font-size:34px}
+.champ .cn{font-size:20px;font-weight:800;margin-top:4px}
+#bkFoot{display:flex;justify-content:center;align-items:center;gap:12px;margin-top:16px}
+#bkFoot .cd{color:var(--dim);font-size:12px}
+#bkFoot button{font-size:14px;padding:8px 16px}
+#bkFoot button.primary{background:var(--accent);color:#111;border-color:var(--accent);font-weight:800}
+.stat.stage{min-width:120px}
+.stat.stage small{color:var(--accent)}
+.stat.stage b{font-size:14px}
+.goal{font-size:10px;color:var(--dim);font-weight:600}
+@media (max-width:900px){#bkCols{grid-template-columns:1fr 1fr}}
+
+#director{position:absolute;top:74px;left:50%;transform:translateX(-50%);padding:5px 14px;border-radius:20px;background:rgba(10,13,18,.78);border:1px solid var(--line2);font-size:12px;font-weight:600;color:#e8edf2;white-space:nowrap;opacity:0;transition:opacity .3s}
+#director.show{opacity:1;animation:capIn .45s ease}
+@keyframes capIn{from{transform:translate(-50%,-6px);opacity:0}to{transform:translateX(-50%);opacity:1}}
+/* ---- Minimal UI: less chrome, more match ---- */
+body.minimal #topBar{padding:5px 10px;gap:10px;top:6px;background:rgba(13,17,23,.6)}
+body.minimal #speedBtns,body.minimal #camBtn,body.minimal #bracketBtn,body.minimal .stat.stage small,body.minimal #hint,body.minimal #mmWrap{display:none}
+body.minimal .stat b{font-size:15px}
+body.minimal #objective{min-width:0;font-size:11px}
+body.minimal #director{top:56px;font-size:11px;background:rgba(10,13,18,.55)}
+body.minimal #scoreboard{width:225px;padding:6px 8px;top:56px;background:rgba(13,17,23,.6)}
+body.minimal #scoreboard h3,body.minimal .roster,body.minimal .ts,body.minimal .tgt,body.minimal .goal,body.minimal .proj{display:none}
+body.minimal .team{padding:4px 7px;margin-bottom:3px;grid-template-columns:12px 1fr auto}
+body.minimal .tn{font-size:13px}
+body.minimal .cash{font-size:13px}
+body.minimal .pend,body.minimal .wipe{font-size:9px;padding:0 4px;white-space:nowrap}
+body.minimal #eventLog{width:300px;height:118px;padding:6px 8px;background:rgba(13,17,23,.45);border-color:transparent;box-shadow:none}
+body.minimal #eventLog h3{display:none}
+body.minimal .event{font-size:11px;padding:1px 4px;border-bottom:none}
+body.minimal .event.kill,body.minimal .event.rotate{display:none}
+body.minimal #minBtn{background:var(--accent);color:#111;border-color:var(--accent)}
+@media (max-width:1250px){
+  #topBar{flex-wrap:wrap;justify-content:center;gap:10px;max-width:calc(100% - 20px)}
+  .sep{display:none}
+  #scoreboard,#mmWrap{top:150px}
+  #hint{display:none}
+}
+@media (max-width:760px){
+  #mmWrap{display:none}
+  #scoreboard{width:calc(100% - 20px);top:auto;bottom:190px;padding:8px}
+  .team{padding:4px 8px;margin-bottom:3px}
+  .tgt{display:none}
+  #eventLog{width:calc(100% - 20px);height:170px}
+}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud">
+  <div id="topBar" class="panel">
+    <div class="stat stage"><small id="stageLbl">Round 1 · Group A</small><b id="stageMap">Canal District</b></div>
+    <div class="sep"></div>
+    <div class="stat"><small>Match</small><b id="clock">00:00</b></div>
+    <div class="stat"><small>Cashouts</small><b><span id="cc">0</span>/<span id="ccMax">6</span></b></div>
+    <div class="sep"></div>
+    <div id="objective"><div id="obj0"></div><div id="obj1"></div></div>
+    <div class="sep"></div>
+    <div class="btns" id="speedBtns"></div>
+    <div class="btns">
+      <button id="pauseBtn" title="Pause / resume (Space)">❚❚ Pause</button>
+      <button id="camBtn" class="active" title="Auto camera (C) · cycle objective focus (F)">Auto cam</button>
+      <button id="bracketBtn" title="Show tournament bracket (B)">🏆 Bracket</button>
+      <button id="minBtn" title="Minimal UI for viewing (H)">◱ Minimal UI</button>
+    </div>
+  </div>
+  <div id="director"></div>
+  <div id="mmWrap" class="panel"><canvas id="minimap" title="Click to move the camera"></canvas></div>
+  <div id="scoreboard" class="panel"><h3>Scoreboard</h3><div id="sbRows"></div></div>
+  <div id="eventLog" class="panel">
+    <h3>Event log <button id="killToggle" class="small">Hide kills</button></h3>
+    <div id="eventEntries" aria-live="polite"></div>
+  </div>
+  <div id="hint" class="panel"><kbd>Space</kbd> pause · <kbd>1</kbd>–<kbd>6</kbd> speed · <kbd>C</kbd> auto cam · <kbd>F</kbd> focus objective · <kbd>B</kbd> bracket · <kbd>H</kbd> minimal UI · drag / wheel<br>Gadget: <b>F</b> frag · <b>G</b> gas · <b>W</b> gateway (lit = ready)</div>
+  <div id="bracket" class="panel">
+    <div id="bkHead"></div>
+    <div id="bkCols"></div>
+    <div id="bkFoot"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const TAU = Math.PI * 2;
+const rand = (a, b) => a + Math.random() * (b - a);
+const randInt = n => Math.floor(Math.random() * n);
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const alpha = (hex, a) => hex + Math.round(a * 255).toString(16).padStart(2, '0');
+const money = n => '$' + Math.round(n).toLocaleString('en-US');
+const fmt = t => { t = Math.floor(t); return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'); };
+
+/* ================= Config ================= */
+const CASHOUT_TIME = 90;       // sim seconds for a cashout to complete
+const STEAL_TIME = 5;          // sim seconds an uncontested enemy team needs to steal
+const STATION_R = 75;
+const RESPAWN_TIME = 12;
+const REVIVE_TIME = 4;         // seconds standing over a teammate's statue to revive them
+const REVIVE_HP = 60;
+const PLAYER_SPEED = 150;
+// Loadouts — each player is assigned one at match start and keeps it all match.
+const WEAPONS = {
+  SG:  { name: 'Shotgun',       tag: 'SG',  range: 140, dmg: 38, cd: .85, accNear: .92, accFar: .45, pellets: 6, hang: -1 },
+  AR:  { name: 'Assault Rifle', tag: 'AR',  range: 220, dmg: 10, cd: .28, accNear: .85, accFar: .45, pellets: 1, hang: 0 },
+  DMR: { name: 'DMR',           tag: 'DMR', range: 340, dmg: 30, cd: 1.5, accNear: .55, accFar: .65, pellets: 1, hang: 1 },
+};
+const WEAPON_KEYS = Object.keys(WEAPONS);
+// Gadgets — each player is given ONE at match start (locked). One charge, recharges after use.
+const GADGETS = {
+  frag: { name: 'Frag Grenade', tag: 'FRAG', key: 'F', cd: 24, range: 300, radius: 115, maxDmg: 96, fuse: .9 },
+  gas:  { name: 'Gas Grenade',  tag: 'GAS',  key: 'G', cd: 24, range: 320, radius: 95, dur: 8, baseDps: 4, rampDps: 10, maxDps: 45, fuse: .9 },
+  gate: { name: 'Gateway',      tag: 'GATE', key: 'W', cd: 32, range: 650, dur: 10 }, // range ≈ a quarter of the map
+};
+// Handles — riffs on well-known THE FINALS streamers & pros, plus a few originals
+const NAME_POOL = ['Shrowdy', 'AimbotKalv', 'Nokko', 'Gigzilla', 'A_Pigeon', 'HitboxKing2', 'KJewlz', 'AceUwU',
+  'Lyrik', 'Xop0p', 'Sykkunot', 'TimmyTimmy', 'DefuseDad', 'RPG_Randy', 'C4Carl', 'BarricadeBob', 'SledgeSally',
+  'ZiplineZed', 'GooGunGus', 'DashPadDan', 'CashoutCarla', 'VaultViolet', 'Demolisha', 'MeshShield'];
+const ASSIGN_EVERY = 2;        // seconds between objective re-evaluations
+const SPEEDS = [.25, .5, 1, 2, 4, 8];
+const LOG_MAX = 90;
+// Match rules — group stages vs. the final
+const GROUP_RULES = { target: 6, slots: 2, values: { first: 8000, middle: 12000, final: 18000 },
+  killReward: 500, vaultReward: 1000, wipePenalty: .15, winCash: 0, advance: 2 };
+const FINAL_RULES = { target: 3, slots: 1, flatValue: 25000,
+  killReward: 0, vaultReward: 0, wipePenalty: 0, winCash: 50000, advance: 1 };
+let RULES = GROUP_RULES;
+const WIPE_RESPAWN = 20;       // forced group respawn after a wipe (seconds)
+
+// 8 teams in the tournament (the original four keep their colours)
+const ALL_TEAMS = [
+  { name: 'Red',    color: '#ff5a5a' }, { name: 'Blue',   color: '#4f9dff' },
+  { name: 'Green',  color: '#4ee08a' }, { name: 'Yellow', color: '#ffd23f' },
+  { name: 'Purple', color: '#a066ff' }, { name: 'Orange', color: '#ff8c2e' },
+  { name: 'Cyan',   color: '#2fe0d8' }, { name: 'Pink',   color: '#ff5fc1' },
+].map((t, id) => ({ ...t, id, roster: [] }));
+let TEAMS = ALL_TEAMS.slice(0, 4); // teams in the current match
+let TSPAWN = [];                   // spawn point per team in the current match
+
+/* ================= Maps ================= */
+const STALL_COLORS = ['#ff4fa3', '#36e0ff', '#b48cff', '#ff9f43', '#4ee08a'];
+const rectList = list => list.map(([x, y, w, h, kind], i) => ({ x, y, w, h, kind, seed: i }));
+const MAPS = {
+  /* ---- 1. Canal District: big open city split by a river, 3 fixed bridges ---- */
+  canal: {
+    name: 'Canal District', theme: 'city', W: 2600, H: 1700,
+    spawns: [{ x: 160, y: 420 }, { x: 2200, y: 150 }, { x: 620, y: 1590 }, { x: 2470, y: 1190 }],
+    vaults: [
+      { x: 560, y: 700, name: 'Bank' },        { x: 1500, y: 340, name: 'Clocktower' },
+      { x: 2050, y: 700, name: 'Market' },     { x: 2150, y: 1410, name: 'Freight' },
+      { x: 860, y: 1260, name: 'Greenhouse' }, { x: 1250, y: 1440, name: 'Pier' },
+    ],
+    stations: [
+      { x: 300, y: 960, name: 'Courthouse' }, { x: 820, y: 370, name: 'Ferry' },
+      { x: 1760, y: 560, name: 'Crane' },     { x: 2420, y: 560, name: 'Plaza' },
+      { x: 1980, y: 1080, name: 'Overpass' }, { x: 560, y: 1200, name: 'Gardens' },
+      { x: 1500, y: 1590, name: 'Wharf' },
+    ],
+    rivers: [{ pts: [[980, -40], [1060, 250], [1180, 520], [1350, 800], [1500, 1050], [1700, 1350], [1860, 1740]], w: 120 }],
+    pools: [[330, 1440, 95]], rings: [], vents: [],
+    bridges: [[960, 225, 210, 80], [1300, 900, 280, 85], [1610, 1420, 280, 80]],
+    buildings: rectList([
+      [40, 520, 190, 160, 'old'], [300, 480, 160, 120, 'old'], [700, 540, 180, 130, 'old'], [400, 170, 190, 120, 'old'],
+      [620, 110, 130, 110, 'old'], [60, 150, 150, 130, 'old'], [540, 830, 240, 90, 'old'], [110, 1060, 120, 190, 'old'],
+      [330, 690, 110, 90, 'old'], [930, 760, 130, 150, 'glass'],
+      [960, 1150, 110, 190, 'glass'], [800, 980, 200, 100, 'old'], [1240, 1560, 170, 120, 'warehouse'], [1080, 1080, 140, 110, 'warehouse'],
+      [1400, 150, 90, 90, 'tower'], [1640, 170, 220, 80, 'scaffold'], [1840, 400, 60, 60, 'crane'], [1560, 690, 220, 110, 'block'],
+      [2340, 110, 190, 170, 'block'],
+      [1960, 460, 80, 50, 'stall'], [2090, 460, 80, 50, 'stall'], [2220, 460, 80, 50, 'stall'], [1960, 900, 80, 50, 'stall'],
+      [2090, 900, 80, 50, 'stall'], [2300, 720, 220, 120, 'neon'], [2440, 900, 130, 180, 'block'],
+      [1870, 990, 40, 40, 'pillar'], [2060, 990, 40, 40, 'pillar'], [1870, 1150, 40, 40, 'pillar'], [2060, 1150, 40, 40, 'pillar'],
+      [1960, 1260, 380, 44, 'car'], [1980, 1530, 320, 44, 'car'], [2380, 1400, 170, 44, 'car'], [2400, 1620, 160, 44, 'car'],
+    ]),
+    trees: [[470, 1330, 30], [520, 1420, 26], [760, 1380, 34], [690, 1300, 24], [1000, 1460, 30], [880, 1520, 28],
+      [420, 1600, 30], [180, 1300, 32], [140, 1560, 28], [780, 1640, 26], [1080, 1640, 30], [250, 1200, 22],
+      [1120, 870, 22], [1240, 1300, 26], [480, 1060, 20], [2560, 1000, 22]],
+    roads: [
+      [[0, 330], [940, 265], [1190, 265], [1700, 420], [2600, 400]],
+      [[0, 960], [700, 960], [1300, 942], [1580, 942], [2000, 1080], [2600, 1050]],
+      [[600, 1700], [900, 1460], [1600, 1460], [1900, 1460], [2100, 1450], [2600, 1300]],
+      [[560, 0], [560, 1100]], [[2150, 0], [2150, 1240]],
+    ],
+    rails: [1282, 1552, 1422, 1642], pipes: [],
+    districts: [
+      { x: 0, y: 0, w: 1100, h: 1000, c: '#1c1915', label: 'OLD TOWN', lx: 330, ly: 390 },
+      { x: 0, y: 1000, w: 1550, h: 700, c: '#13201a', label: 'RIVERSIDE PARK', lx: 700, ly: 1110 },
+      { x: 1150, y: 0, w: 900, h: 650, c: '#1d1b13', label: 'CONSTRUCTION', lx: 1720, ly: 330 },
+      { x: 1850, y: 380, w: 750, h: 600, c: '#1a1427', label: 'NEON MARKET', lx: 2200, ly: 640 },
+      { x: 1750, y: 1180, w: 850, h: 520, c: '#161b21', label: 'RAIL YARD', lx: 2250, ly: 1350 },
+    ],
+  },
+  /* ---- 2. The Crucible: tight volcanic foundry. Island core ringed by lava,
+          drawbridges that swap every 20s, and floor vents that erupt. ---- */
+  crucible: {
+    name: 'The Crucible', theme: 'foundry', W: 2000, H: 1400,
+    spawns: [{ x: 180, y: 160 }, { x: 1880, y: 720 }, { x: 1150, y: 1320 }, { x: 130, y: 830 }],
+    vaults: [
+      { x: 1000, y: 700, name: 'Heart' },   { x: 520, y: 340, name: 'Ladle' },
+      { x: 1420, y: 200, name: 'Smelter' }, { x: 1650, y: 1060, name: 'Kiln' },
+      { x: 300, y: 560, name: 'Slag' },     { x: 800, y: 1200, name: 'Mould' },
+    ],
+    stations: [
+      { x: 1460, y: 520, name: 'Forge' },   { x: 470, y: 700, name: 'Anvil' },
+      { x: 1300, y: 1150, name: 'Bellows' }, { x: 800, y: 180, name: 'Chimney' },
+      { x: 1760, y: 1260, name: 'Quench' }, { x: 260, y: 1020, name: 'Cinder' },
+    ],
+    rivers: [{ pts: [[790, 915], [560, 1080], [380, 1250], [300, 1440]], w: 90 }],
+    pools: [[1720, 250, 150]],
+    rings: [{ x: 1000, y: 700, r1: 165, r2: 320 }],
+    // [x, y, w, h, group]  group 0 / 1 swap every cycle; no group = fixed
+    bridges: [[955, 365, 90, 180, 0], [955, 855, 90, 180, 0], [1155, 655, 180, 90, 1], [665, 655, 180, 90, 1], [380, 1120, 180, 80]],
+    bridgeCycle: { period: 20, warn: 3, names: ['North & South', 'East & West'] },
+    vents: [{ x: 1250, y: 380, r: 62, period: 13, off: 0 }, { x: 700, y: 990, r: 62, period: 15, off: 6 },
+            { x: 1560, y: 820, r: 62, period: 11, off: 3 }, { x: 330, y: 300, r: 55, period: 17, off: 9 }],
+    buildings: rectList([
+      [1150, 110, 160, 120, 'furnace'], [300, 250, 130, 110, 'furnace'], [620, 60, 110, 80, 'furnace'], [1500, 1210, 120, 140, 'furnace'],
+      [620, 440, 60, 150, 'container'], [1320, 820, 150, 60, 'container'], [760, 1270, 180, 60, 'container'],
+      [1590, 590, 60, 150, 'container'], [190, 380, 100, 70, 'container'], [1800, 900, 70, 140, 'container'],
+      [1700, 880, 0, 0, 'skip'],
+      [1660, 920, 90, 90, 'silo'], [980, 1130, 110, 90, 'silo'], [1240, 980, 70, 70, 'silo'],
+      [40, 1150, 120, 120, 'block'], [1820, 380, 140, 120, 'block'],
+    ].filter(b => b[4] !== 'skip')),
+    trees: [], rails: [],
+    roads: [ // steel catwalk lanes
+      [[0, 470], [440, 470], [700, 300], [1260, 300], [1580, 380], [2000, 400]],
+      [[0, 1080], [200, 1080], [470, 1180], [1100, 1220], [1500, 1100], [2000, 1140]],
+      [[1880, 0], [1880, 1400]], [[800, 0], [800, 300]],
+    ],
+    pipes: [[[0, 40], [2000, 40]], [[1970, 0], [1970, 1400]], [[40, 900], [40, 1400]], [[1150, 1380], [2000, 1380]]],
+    districts: [
+      { x: 0, y: 0, w: 900, h: 640, c: '#1d1712', label: 'SMELTING HALL', lx: 520, ly: 130 },
+      { x: 1100, y: 0, w: 900, h: 640, c: '#1a1612', label: 'BLAST FURNACES', lx: 1540, ly: 460 },
+      { x: 0, y: 860, w: 900, h: 540, c: '#16130f', label: 'SLAG YARD', lx: 470, ly: 1320 },
+      { x: 1100, y: 760, w: 900, h: 640, c: '#14171a', label: 'COOLING DOCKS', lx: 1540, ly: 1000 },
+    ],
+  },
+};
+
+let MAP, W, H, SPAWNS, VAULTS, STATIONS, RIVERS, PONDS, RINGS, BRIDGES, BUILDINGS, TREES, ROADS, RAILS, PIPES, DISTRICTS, VENTS;
+let bridgePhase = -1;
+
+/* ---------- Geometry / collision ---------- */
+function segDist(px, py, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay, l = dx * dx + dy * dy;
+  const t = l ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / l)) : 0;
+  return Math.hypot(px - ax - t * dx, py - ay - t * dy);
+}
+const inRect = (x, y, r, pad) => x > r.x - pad && x < r.x + r.w + pad && y > r.y - pad && y < r.y + r.h + pad;
+function onBridge(x, y) { for (const b of BRIDGES) if (!b.up && x > b.x && x < b.x + b.w && y > b.y && y < b.y + b.h) return true; return false; }
+// "Water" = any impassable liquid (river, pond, lava)
+function inWater(x, y, pad) {
+  if (onBridge(x, y)) return false;
+  for (const [cx, cy, r] of PONDS) if (Math.hypot(x - cx, y - cy) < r + pad) return true;
+  for (const g of RINGS) { const d = Math.hypot(x - g.x, y - g.y); if (d > g.r1 - pad && d < g.r2 + pad) return true; }
+  for (const rv of RIVERS) for (let i = 0; i < rv.pts.length - 1; i++)
+    if (segDist(x, y, rv.pts[i][0], rv.pts[i][1], rv.pts[i + 1][0], rv.pts[i + 1][1]) < rv.w / 2 + pad) return true;
+  return false;
+}
+function inSolid(x, y, pad) { for (const b of BUILDINGS) if (inRect(x, y, b, pad)) return true; return false; }
+// Movement collision (exact geometry, player radius ~11)
+const blockedAt = (x, y) => x < 12 || y < 12 || x > W - 12 || y > H - 12 || inSolid(x, y, 11) || inWater(x, y, 0);
+// Bullets are stopped by buildings only (not liquids)
+function lineOfSight(a, b) {
+  const d = dist(a, b), n = Math.ceil(d / 16);
+  for (let i = 1; i < n; i++) { const t = i / n; if (inSolid(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, 0)) return false; }
+  return true;
+}
+
+/* ---------- Nav grid + flow fields ---------- */
+const CELL = 40;
+let GW, GH, N, grid;
+const fieldCache = new Map();
+function buildGrid() {
+  GW = Math.ceil(W / CELL); GH = Math.ceil(H / CELL); N = GW * GH;
+  grid = new Uint8Array(N); // 1 = blocked for pathing (stricter than collision so waypoints are always free)
+  for (let gy = 0; gy < GH; gy++) for (let gx = 0; gx < GW; gx++) {
+    const x = (gx + .5) * CELL, y = (gy + .5) * CELL;
+    grid[gy * GW + gx] = (x < 20 || y < 20 || x > W - 20 || y > H - 20 || inSolid(x, y, 22) || inWater(x, y, 16)) ? 1 : 0;
+  }
+  fieldCache.clear();
+}
+function loadMap(id) {
+  MAP = MAPS[id]; MAP.id = id;
+  ({ W, H } = MAP);
+  SPAWNS = MAP.spawns; VAULTS = MAP.vaults; STATIONS = MAP.stations; RIVERS = MAP.rivers; PONDS = MAP.pools;
+  RINGS = MAP.rings; BUILDINGS = MAP.buildings; TREES = MAP.trees; ROADS = MAP.roads; RAILS = MAP.rails;
+  PIPES = MAP.pipes; DISTRICTS = MAP.districts; VENTS = MAP.vents;
+  BRIDGES = MAP.bridges.map(([x, y, w, h, group]) => ({ x, y, w, h, group, up: false }));
+  bridgePhase = -1;
+  applyBridgePhase(0, true);
+  buildGrid();
+  if (typeof GADGETS !== 'undefined') GADGETS.gate.range = W / 4; // "about a quarter of the map"
+}
+// Drawbridges: one group down, the other raised; swaps every cycle
+function applyBridgePhase(ph, silent) {
+  if (!MAP.bridgeCycle || ph === bridgePhase) return false;
+  bridgePhase = ph;
+  for (const b of BRIDGES) b.up = b.group !== undefined && b.group !== ph;
+  if (!silent) {
+    buildGrid();
+    for (const p of players) if (p.alive && blockedAt(p.x, p.y)) { // shove anyone off a rising bridge
+      const c = nearestFree(cellOf(p.x, p.y)); p.x = cx(c); p.y = cy(c); p.wp = null; p.repath = 0;
+    }
+    for (const p of players) p.repath = 0;
+    buildMinimapStatic();
+    addLog([GOLD(MAP.bridgeCycle.names[ph] + ' drawbridges lowered'), ' — ' + MAP.bridgeCycle.names[1 - ph] + ' raised'], 'vault');
+  }
+  return true;
+}
+const bridgeWarn = () => MAP.bridgeCycle && (time % MAP.bridgeCycle.period) > MAP.bridgeCycle.period - MAP.bridgeCycle.warn;
+// Vents: warn for 1.5s, then erupt for 3s
+const VENT_ACTIVE = 3, VENT_WARN = 1.5, VENT_DPS = 34;
+function ventState(v) {
+  const ph = (time + v.off) % v.period;
+  return ph > v.period - VENT_ACTIVE ? 'active' : ph > v.period - VENT_ACTIVE - VENT_WARN ? 'warn' : 'idle';
+}
+function updateHazards(dt) {
+  if (MAP.bridgeCycle) applyBridgePhase(Math.floor(time / MAP.bridgeCycle.period) % 2, false);
+  for (const v of VENTS) {
+    if (ventState(v) !== 'active') { v.logged = false; continue; }
+    for (const p of players) if (p.alive && dist(p, v) < v.r) damage(null, p, VENT_DPS * dt, 'VENT');
+  }
+}
+const cellOf = (x, y) => Math.max(0, Math.min(GH - 1, Math.floor(y / CELL))) * GW + Math.max(0, Math.min(GW - 1, Math.floor(x / CELL)));
+const cx = i => (i % GW + .5) * CELL, cy = i => (Math.floor(i / GW) + .5) * CELL;
+function nearestFree(c) {
+  if (!grid[c]) return c;
+  const gx = c % GW, gy = Math.floor(c / GW);
+  for (let r = 1; r < 10; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+    if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+    const x = gx + dx, y = gy + dy;
+    if (x >= 0 && y >= 0 && x < GW && y < GH && !grid[y * GW + x]) return y * GW + x;
+  }
+  return c;
+}
+const DIRS = [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, 1.414], [1, -1, 1.414], [-1, 1, 1.414], [-1, -1, 1.414]];
+function neighbors(c, fn) {
+  const gx = c % GW, gy = Math.floor(c / GW);
+  for (const [dx, dy, w] of DIRS) {
+    const x = gx + dx, y = gy + dy;
+    if (x < 0 || y < 0 || x >= GW || y >= GH) continue;
+    const n = y * GW + x;
+    if (grid[n]) continue;
+    if (dx && dy && (grid[gy * GW + x] || grid[y * GW + gx])) continue; // no corner cutting
+    fn(n, w);
+  }
+}
+function getField(x, y) {
+  const s = nearestFree(cellOf(x, y));
+  let f = fieldCache.get(s);
+  if (f) return f;
+  f = new Float64Array(N).fill(1e9);
+  f[s] = 0;
+  const hc = [0], hi = [s]; // binary heap
+  const push = (c, i) => { hc.push(c); hi.push(i); let k = hc.length - 1;
+    while (k) { const p = (k - 1) >> 1; if (hc[p] <= hc[k]) break; [hc[p], hc[k]] = [hc[k], hc[p]]; [hi[p], hi[k]] = [hi[k], hi[p]]; k = p; } };
+  const pop = () => { const c = hc[0], i = hi[0], lc = hc.pop(), li = hi.pop();
+    if (hc.length) { hc[0] = lc; hi[0] = li; let k = 0;
+      for (;;) { const l = 2 * k + 1, r = l + 1; let m = k;
+        if (l < hc.length && hc[l] < hc[m]) m = l; if (r < hc.length && hc[r] < hc[m]) m = r;
+        if (m === k) break; [hc[m], hc[k]] = [hc[k], hc[m]]; [hi[m], hi[k]] = [hi[k], hi[m]]; k = m; } }
+    return [c, i]; };
+  while (hc.length) {
+    const [c, i] = pop();
+    if (c > f[i]) continue;
+    neighbors(i, (n, w) => { const nc = c + w; if (nc < f[n]) { f[n] = nc; push(nc, n); } });
+  }
+  if (fieldCache.size > 60) fieldCache.delete(fieldCache.keys().next().value);
+  fieldCache.set(s, f);
+  return f;
+}
+function clearWalk(ax, ay, bx, by) {
+  const n = Math.ceil(Math.hypot(bx - ax, by - ay) / 14);
+  for (let i = 1; i <= n; i++) { const t = i / n; if (grid[cellOf(ax + (bx - ax) * t, ay + (by - ay) * t)]) return false; }
+  return true;
+}
+function downhill(f, c) {
+  let best = -1, bv = f[c];
+  neighbors(c, n => { if (f[n] < bv) { bv = f[n]; best = n; } });
+  return best;
+}
+function pickWaypoint(p, tx, ty) {
+  if (clearWalk(p.x, p.y, tx, ty)) return null; // direct
+  const f = getField(tx, ty);
+  let c = nearestFree(cellOf(p.x, p.y));
+  let best = { x: cx(c), y: cy(c) }, first = true;
+  for (let k = 0; k < 8; k++) {
+    const n = downhill(f, c); if (n < 0) break;
+    c = n;
+    const pt = { x: cx(c), y: cy(c) };
+    if (first || clearWalk(p.x, p.y, pt.x, pt.y)) { best = pt; first = false; } else break;
+  }
+  return best;
+}
+
+/* ================= State ================= */
+let speed = 1, paused = false, over = false;
+let projectiles, clouds, gates, fx, vaultsOpened, time, totalCashouts, stats, players, slots, teamTarget, teamMood, moodTimer, assignTimer, leader, shots;
+
+function placeAtSpawn(p) {
+  const s = TSPAWN[p.team];
+  do { p.x = s.x + rand(-40, 40); p.y = s.y + rand(-40, 40); } while (blockedAt(p.x, p.y));
+  p.hp = 100; p.alive = true; p.lastHit = -99; p.wp = null; p.repath = 0; p.flee = 0; p.fleeRoll = 0;
+  clearStatue(p);
+}
+function clearStatue(d) {
+  if (d.carriedBy) d.carriedBy.carrying = null;
+  if (d.helper && d.helper.helping === d) { d.helper.helping = null; d.helper.reviving = false; }
+  d.statue = false; d.carriedBy = null; d.helper = null; d.reviveProg = 0; d.movedOnce = false;
+}
+function newPlayer(team, k, name) {
+  const weapon = WEAPON_KEYS[randInt(WEAPON_KEYS.length)];
+  const gadget = Object.keys(GADGETS)[randInt(3)];
+  const p = { team, id: k + 1, name, weapon, gadget, cd: Math.random() * WEAPONS[weapon].cd, ang: 0,
+    orbit: rand(0, TAU), orbitSpd: rand(.3, .7) * (Math.random() < .5 ? -1 : 1), stuck: 0,
+    gcd: { frag: 0, gas: 0, gate: 0 }, gasTime: 0, tpCd: 0, gadgetRoll: rand(0, .5) };
+  placeAtSpawn(p);
+  return p;
+}
+
+function pickSpawns() {
+  if (TEAMS.length >= SPAWNS.length) return SPAWNS.slice(0, TEAMS.length);
+  // Two-team final: use the pair of spawns furthest apart
+  let best = [SPAWNS[0], SPAWNS[1]], bd = 0;
+  for (const a of SPAWNS) for (const b of SPAWNS) if (dist(a, b) > bd) { bd = dist(a, b); best = [a, b]; }
+  return Math.random() < .5 ? best : best.reverse();
+}
+function reset() {
+  TSPAWN = pickSpawns();
+  time = 0; totalCashouts = 0; vaultsOpened = 0; projectiles = []; clouds = []; gates = []; fx = []; over = false; leader = -1; shots = []; moodTimer = 0; assignTimer = 0;
+  teamMood = TEAMS.map(() => Array(RULES.slots).fill(0));
+  stats = TEAMS.map(() => ({ cash: 0, kills: 0, deaths: 0, cashouts: 0, wipes: 0, revives: 0, wiped: false }));
+  players = [];
+  TEAMS.forEach((t, ti) => { for (let k = 0; k < 3; k++) players.push(newPlayer(ti, k, t.roster[k])); });
+  slots = [];
+  for (let i = 0; i < RULES.slots; i++) { const s = { i, box: null, station: null, vault: -1, lastVault: -1, timer: 0, idle: false }; slots.push(s); }
+  slots.forEach((s, i) => schedule(s, 3 + i * 2.5));
+  teamTarget = TEAMS.map(() => -1);
+  entries.textContent = '';
+  const stg = TOUR ? TOUR.stages[TOUR.idx].label : 'Match';
+  addLog([`${stg} started on ${MAP.name} — ` + (RULES.winCash ? `first to ${money(RULES.winCash)} wins` : `top ${RULES.advance} advance`)], 'major');
+  assignTeams(false, true);
+  TEAMS.forEach((_, ti) => addLog([T(ti), ' loadouts locked: ',
+    players.filter(p => p.team === ti).map(p => `${p.name} (${WEAPONS[p.weapon].tag} + ${GADGETS[p.gadget].name})`).join(', ')], 'rotate'));
+  director.events = []; director.shot = null; director.nextEval = 0; director.holdUntil = 0;
+  lastSB = ''; sbRows.textContent = ''; sbEls.clear(); sbOrder = [];
+}
+
+/* ================= Event log ================= */
+const entries = $('eventEntries');
+const T = i => ({ t: TEAMS[i].name, c: TEAMS[i].color });
+const P = p => ({ t: p.name, c: TEAMS[p.team].color });
+const GOLD = t => ({ t, c: '#ffcc33' });
+function addLog(parts, kind = '') {
+  const el = document.createElement('div');
+  el.className = 'event ' + kind;
+  const tm = document.createElement('time');
+  tm.textContent = fmt(time);
+  el.append(tm);
+  for (const part of parts) {
+    if (typeof part === 'string') { el.append(part); continue; }
+    const s = document.createElement('span');
+    s.textContent = part.t; s.style.color = part.c; s.style.fontWeight = '600';
+    el.append(s);
+  }
+  const atTop = entries.scrollTop < 4;
+  entries.prepend(el);
+  while (entries.childElementCount > LOG_MAX) entries.lastElementChild.remove();
+  if (atTop) entries.scrollTop = 0;
+}
+
+/* ================= Objectives (slots) ================= */
+function slotPoint(s) {
+  if (s.station) return s.station;
+  if (s.box) return s.box.carrier || s.box;
+  if (s.vault >= 0) return VAULTS[s.vault];
+  return { x: W / 2, y: H / 2 };
+}
+function slotLabel(s) {
+  if (s.station) return s.station.name + ' cashout';
+  if (s.box) return s.box.carrier ? s.box.carrier.name + ' carrying cash' : VAULTS[s.vault].name + ' vault';
+  if (s.idle) return 'closed';
+  return VAULTS[s.vault].name + ' vault (opening)';
+}
+function slotOwner(s) {
+  if (s.station) return s.station.team;
+  if (s.box && s.box.carrier) return s.box.carrier.team;
+  return -1;
+}
+const isLive = s => !!(s.box || s.station);
+
+function schedule(slot, delay) {
+  slot.box = null; slot.station = null; slot.timer = delay;
+  const others = slots.filter(o => o !== slot);
+  const taken = new Set(others.map(o => o.vault).filter(v => v >= 0));
+  const far = i => others.every(o => !(o.vault >= 0 || isLive(o)) || dist(VAULTS[i], slotPoint(o)) > 700);
+  let pool = VAULTS.map((_, i) => i).filter(i => !taken.has(i) && i !== slot.lastVault && far(i));
+  if (!pool.length) pool = VAULTS.map((_, i) => i).filter(i => !taken.has(i));
+  slot.vault = pool[randInt(pool.length)];
+}
+function openVault(slot) {
+  const v = VAULTS[slot.vault];
+  camEvent('vault' + slot.i, `${v.name} vault opens`, 40, 4, () => slot.box ? (slot.box.carrier || slot.box) : v, 220);
+  slot.lastVault = slot.vault;
+  vaultsOpened++;
+  const V = RULES.values, value = RULES.flatValue || (vaultsOpened === 1 ? V.first : vaultsOpened >= RULES.target ? V.final : V.middle);
+  slot.box = { x: v.x, y: v.y, value, carrier: null, dest: -1, sealed: true };
+  addLog([`${v.name} vault opened — `, GOLD(money(slot.box.value)), ' up for grabs'], 'vault');
+  assignTeams(false);
+}
+
+function teamCentroid(t) {
+  let x = 0, y = 0, n = 0;
+  for (const p of players) if (p.team === t && p.alive) { x += p.x; y += p.y; n++; }
+  return n ? { x: x / n, y: y / n } : TSPAWN[t];
+}
+
+// Objective AI: every couple of seconds each team scores both objectives and picks the best one.
+// Owners always defend; free steals, loose cash and escorting teammates are attractive;
+// crowding (more than 2 teams on one objective) and distance count against it.
+const alivesNear = (team, pt, r) => players.reduce((n, q) => n + (q.alive && q.team === team && dist(q, pt) < r ? 1 : 0), 0);
+function undefended(s) {
+  const o = s.station.team;
+  return stats[o].wiped || alivesNear(o, s.station, STATION_R * 3) === 0;
+}
+function slotScore(t, s, assigned) {
+  if (s.idle) return -1e9;
+  const pt = slotPoint(s);
+  let sc = -dist(teamCentroid(t), pt) / 90;
+  if (s.station) {
+    const st = s.station;
+    if (st.team === t) sc += 70;
+    else {
+      sc += 15 + st.value / 1000;
+      if (undefended(s)) sc += 45;                       // free steal!
+      else sc -= alivesNear(st.team, pt, STATION_R * 3) * 6;
+      if (st.stealTeam === t) sc += 20;                  // finish what we started
+      sc -= Math.max(0, st.progress - .85) * 120;        // nearly done — probably too late
+    }
+  } else if (s.box) {
+    const car = s.box.carrier;
+    sc += car && car.team === t ? 60 : car ? 22 : 28;
+  } else sc += s.timer > 6 ? -4 : 6;                     // vault about to open
+  const crowd = assigned.filter((x, o) => o !== t && x === s.i && !stats[o].wiped).length;
+  sc -= Math.max(0, crowd - 1) * 18;                     // 2 teams per fight is normal, 3 is a crash
+  if (teamTarget[t] === s.i) sc += 10;                   // stickiness so teams don't flip-flop
+  return sc + teamMood[t][s.i];
+}
+function assignTeams(roll, silent) {
+  const prev = teamTarget.slice();
+  if (roll) {
+    if ((moodTimer -= ASSIGN_EVERY) <= 0) { moodTimer = 15; teamMood = TEAMS.map(() => slots.map(() => rand(-8, 8))); }
+    assignTimer = ASSIGN_EVERY;
+  }
+  const assigned = TEAMS.map(() => -1);
+  for (const s of slots) { const o = slotOwner(s); if (o >= 0 && assigned[o] < 0) assigned[o] = s.i; } // owners stay home
+  const free = TEAMS.map((_, t) => t).filter(t => assigned[t] < 0);
+  const best = t => { let b = -1, bs = -Infinity; for (const s of slots) { const v = slotScore(t, s, assigned); if (v > bs) { bs = v; b = s.i; } } return [b, bs]; };
+  // Most motivated team picks first
+  while (free.length) {
+    free.sort((a, b) => best(b)[1] - best(a)[1]);
+    const t = free.shift();
+    assigned[t] = best(t)[0];
+  }
+  for (let t = 0; t < TEAMS.length; t++) teamTarget[t] = assigned[t] < 0 ? 0 : assigned[t];
+  if (!silent) teamTarget.forEach((si, t) => {
+    if (prev[t] < 0 || prev[t] === si || !isLive(slots[si]) || stats[t].wiped) return;
+    const s = slots[si];
+    const why = s.station && s.station.team !== t && undefended(s) ? `go steal the undefended ${s.station.name} cashout`
+      : 'rotate to ' + slotLabel(s);
+    addLog([T(t), ' ' + why], s.station && s.station.team !== t && undefended(s) ? 'steal' : 'rotate');
+  });
+}
+
+/* ================= Simulation ================= */
+function closestAlive(team, pt) {
+  let best = null, bd = Infinity;
+  for (const p of players) if (p.alive && p.team === team) { const d = dist(p, pt); if (d < bd) { bd = d; best = p; } }
+  return best;
+}
+const carriedSlot = p => slots.find(s => s.box && s.box.carrier === p);
+
+function goal(p) {
+  const own = carriedSlot(p);
+  if (own) { const st = STATIONS[own.box.dest]; return { x: st.x, y: st.y, r: 0 }; }
+  const s = slots[teamTarget[p.team]];
+  if (s.box) {
+    const c = s.box.carrier;
+    if (c) return c.team === p.team ? { x: c.x, y: c.y, r: WEAPONS[p.weapon].hang > 0 ? 170 : 60 } : { x: c.x, y: c.y, r: 16 };
+    return { x: s.box.x, y: s.box.y, r: closestAlive(p.team, s.box) === p ? 0 : 55 };
+  }
+  if (s.station) return { x: s.station.x, y: s.station.y, r: WEAPONS[p.weapon].hang > 0 ? 190 : 45 };
+  const v = VAULTS[s.vault] || { x: W / 2, y: H / 2 };
+  return { x: v.x, y: v.y, r: 140 }; // pre-position around the vault that's about to open
+}
+
+function shoot(p, foe, d) {
+  const w = WEAPONS[p.weapon], t = d / w.range;
+  const acc = w.accNear + (w.accFar - w.accNear) * t;
+  const hit = Math.random() < acc;
+  const now = performance.now();
+  for (let i = 0; i < w.pellets; i++) {
+    const spread = w.pellets > 1 ? 22 : 18, miss = !hit || i > 1;
+    shots.push({ x1: p.x, y1: p.y, x2: foe.x + (miss ? rand(-spread, spread) : 0), y2: foe.y + (miss ? rand(-spread, spread) : 0),
+      c: TEAMS[p.team].color, w: p.weapon, born: now });
+  }
+  if (!hit) return;
+  // Shotgun damage falls off with distance
+  const dmg = w.dmg * (p.weapon === 'SG' ? 1.25 - .65 * t : 1);
+  damage(p, foe, dmg * rand(.85, 1.15), w.tag);
+}
+
+function damage(src, q, amount, tag) {
+  if (!q.alive || amount <= 0) return;
+  q.hp -= amount; q.lastHit = time;
+  if (q.hp <= 0) kill(src, q, tag);
+}
+
+function kill(killer, victim, tag = killer ? WEAPONS[killer.weapon].tag : 'VENT') {
+  victim.alive = false; victim.hp = 0; victim.respawn = RESPAWN_TIME; victim.gasTime = 0;
+  victim.deathX = victim.x; victim.deathY = victim.y;
+  // Drop anyone we were carrying / reviving, then leave a revivable statue
+  if (victim.carrying) { const d = victim.carrying; d.carriedBy = null; d.deathX = victim.x + 14; d.deathY = victim.y; victim.carrying = null; }
+  if (victim.helping) { victim.helping.helper = null; victim.helping = null; }
+  victim.reviving = false;
+  clearStatue(victim); victim.statue = true;
+  stats[victim.team].deaths++;
+  if (!killer) addLog([P(victim), ' was incinerated by an erupting vent [VENT]'], 'kill');
+  else if (killer === victim) addLog([P(victim), ` got caught in their own ${tag === 'GAS' ? 'gas' : 'frag'} [${tag}]`], 'kill');
+  else if (killer.team === victim.team) addLog([P(killer), ` [${tag}] took out teammate `, P(victim), ' — friendly fire!'], 'kill');
+  else {
+    stats[killer.team].kills++; stats[killer.team].cash += RULES.killReward;
+    addLog([P(killer), ` [${tag}] eliminated `, P(victim), ...(RULES.killReward ? [' ', GOLD('+' + money(RULES.killReward))] : [])], 'kill');
+  }
+  const s = carriedSlot(victim);
+  if (s) {
+    s.box.carrier = null; s.box.x = victim.x; s.box.y = victim.y; s.box.dest = -1;
+    addLog([P(victim), ' dropped the ', GOLD(money(s.box.value))], 'cash');
+    assignTeams(false);
+  }
+  if (players.every(q => q.team !== victim.team || !q.alive)) teamWipe(victim.team);
+}
+
+/* ---------- Gadgets ---------- */
+const teammatesNear = (p, pt, r) => players.some(q => q.alive && q.team === p.team && dist(q, pt) < r);
+function landingSpot(x, y) {
+  x = Math.max(20, Math.min(W - 20, x)); y = Math.max(20, Math.min(H - 20, y));
+  if (!inSolid(x, y, 0)) return { x, y };
+  const c = nearestFree(cellOf(x, y)); return { x: cx(c), y: cy(c) };
+}
+function throwNade(p, kind, tx, ty) {
+  const G = GADGETS[kind], t = landingSpot(tx, ty);
+  p.gcd[kind] = G.cd;
+  projectiles.push({ kind, owner: p, x0: p.x, y0: p.y, x1: t.x, y1: t.y, t: 0, fuse: G.fuse });
+}
+function placeGate(p, ex, ey, why) {
+  const G = GADGETS.gate, d = Math.hypot(ex - p.x, ey - p.y);
+  if (d > G.range) { ex = p.x + (ex - p.x) / d * G.range; ey = p.y + (ey - p.y) / d * G.range; }
+  const c = nearestFree(cellOf(ex, ey));
+  p.gcd.gate = G.cd;
+  gates.push({ a: { x: p.x, y: p.y }, b: { x: cx(c), y: cy(c) }, team: p.team, owner: p, left: G.dur });
+  p.tpCd = 0;
+  addLog([P(p), ` opened a gateway to ${why}`], 'rotate');
+  { const g = gates[gates.length - 1]; camEvent('gate' + p.name, `${p.name} opens a gateway to ${why}`, 40, 3.5, () => ({ x: (g.a.x + g.b.x) / 2, y: (g.a.y + g.b.y) / 2 }), Math.max(200, dist(g.a, g.b) / 2 + 80)); }
+}
+function explodeFrag(pr) {
+  const G = GADGETS.frag, at = { x: pr.x1, y: pr.y1 };
+  fx.push({ kind: 'blast', x: at.x, y: at.y, r: G.radius, born: performance.now() });
+  for (const q of players) {
+    if (!q.alive) continue;
+    const d = dist(q, at);
+    if (d < G.radius && lineOfSight(at, q)) damage(pr.owner, q, G.maxDmg * Math.pow(1 - d / G.radius, 1.8), 'FRAG');
+  }
+}
+// Gateway pathing: is it shorter to walk into a gateway and come out the other side?
+function gateDetour(p, tx, ty) {
+  if (!gates.length || p.tpCd > 0) return null;
+  const f = getField(tx, ty), pd = (pt) => f[nearestFree(cellOf(pt.x, pt.y))] * CELL;
+  const mine = pd(p);
+  let best = null, bestCost = mine - 220;
+  for (const g of gates) for (const [inn, out] of [[g.a, g.b], [g.b, g.a]]) {
+    const di = dist(p, inn);
+    if (di > 320 || !clearWalk(p.x, p.y, inn.x, inn.y)) continue;
+    const cost = di + pd(out);
+    if (cost < bestCost) { bestCost = cost; best = { x: inn.x, y: inn.y }; }
+  }
+  return best;
+}
+function updateGadgets(dt) {
+  for (const p of players) { for (const k in p.gcd) p.gcd[k] = Math.max(0, p.gcd[k] - dt); p.tpCd -= dt; }
+  // Grenades in flight
+  for (const pr of projectiles) {
+    pr.t += dt;
+    if (pr.t < pr.fuse) continue;
+    if (pr.kind === 'frag') explodeFrag(pr);
+    else clouds.push({ x: pr.x1, y: pr.y1, r: GADGETS.gas.radius, owner: pr.owner, left: GADGETS.gas.dur });
+    pr.done = true;
+  }
+  projectiles = projectiles.filter(pr => !pr.done);
+  // Gas: damage ramps up the longer you stay inside
+  const G = GADGETS.gas;
+  for (const q of players) {
+    if (!q.alive) continue;
+    const c = clouds.find(c => dist(q, c) < c.r);
+    if (c) {
+      q.gasTime += dt;
+      damage(c.owner, q, Math.min(G.maxDps, G.baseDps + G.rampDps * q.gasTime) * dt, 'GAS');
+    } else q.gasTime = Math.max(0, q.gasTime - 2 * dt);
+  }
+  for (const c of clouds) c.left -= dt;
+  clouds = clouds.filter(c => c.left > 0);
+  // Gateways: anyone can step in either end
+  for (const g of gates) {
+    g.left -= dt;
+    for (const q of players) {
+      if (!q.alive || q.tpCd > 0) continue;
+      for (const [inn, out] of [[g.a, g.b], [g.b, g.a]]) if (dist(q, inn) < 20) {
+        fx.push({ kind: 'warp', x: q.x, y: q.y, c: TEAMS[q.team].color, born: performance.now() });
+        let nx, ny, tries = 0;
+        do { nx = out.x + rand(-14, 14); ny = out.y + rand(-14, 14); } while (blockedAt(nx, ny) && ++tries < 10);
+        if (tries >= 10) { nx = out.x; ny = out.y; }
+        q.x = nx; q.y = ny; q.tpCd = 1.5; q.wp = null; q.repath = 0;
+        fx.push({ kind: 'warp', x: q.x, y: q.y, c: TEAMS[q.team].color, born: performance.now() });
+        if (q.team !== g.team && !g.enemyUsed) { g.enemyUsed = true; addLog([P(q), ' hijacked ', T(g.team), "'s gateway!"], 'rotate'); }
+        break;
+      }
+    }
+  }
+  gates = gates.filter(g => g.left > 0);
+}
+// Decide whether to throw a frag / gas this tick
+function gadgetAI(p, foe, dt) {
+  if ((p.gadgetRoll -= dt) > 0) return;
+  p.gadgetRoll = rand(.35, .6);
+  const enemies = players.filter(q => q.alive && q.team !== p.team);
+  // FRAG: best enemy cluster in range, never with a teammate (or yourself) in the blast
+  if (p.gadget === 'frag' && p.gcd.frag <= 0 && foe && Math.random() < .3) {
+    const G = GADGETS.frag;
+    let tgt = null, bestN = 0;
+    for (const q of enemies) {
+      const d = dist(p, q);
+      if (d > G.range || d < G.radius * .9 || !lineOfSight(p, q)) continue;
+      const n = enemies.filter(o => dist(o, q) < 70).length;
+      if (n > bestN && !teammatesNear(p, q, G.radius * .85)) { bestN = n; tgt = q; }
+    }
+    if (tgt) return throwNade(p, 'frag', tgt.x + rand(-25, 25), tgt.y + rand(-25, 25));
+  }
+  // GAS: deny an enemy cashout or a clump of 2+ enemies
+  if (p.gadget === 'gas' && p.gcd.gas <= 0 && Math.random() < .5) {
+    const G = GADGETS.gas;
+    let aim = null;
+    for (const s of slots) {
+      const st = s.station;
+      if (st && st.team !== p.team && dist(p, st) < G.range + STATION_R && enemies.some(q => dist(q, st) < STATION_R)) aim = { x: st.x, y: st.y };
+    }
+    if (!aim) for (const q of enemies) {
+      if (dist(p, q) > G.range || dist(p, q) < G.radius + 20) continue;
+      if (enemies.filter(o => dist(o, q) < 90).length >= 2) { aim = { x: q.x, y: q.y }; break; }
+    }
+    if (aim && dist(p, aim) > G.radius + 25 && !teammatesNear(p, aim, G.radius + 10)) return throwNade(p, 'gas', aim.x, aim.y);
+  }
+}
+// Gateway to push: open a portal far along our path when the objective is a long walk away
+function gatePush(p, g) {
+  if (p.gadget !== 'gate' || p.gcd.gate > 0 || Math.random() > .04) return;
+  const f = getField(g.x, g.y);
+  let c = nearestFree(cellOf(p.x, p.y));
+  const startD = f[c] * CELL;
+  if (startD < W * .42) return;
+  let last = c;
+  for (let k = 0; k < 60; k++) {
+    const n = downhill(f, c); if (n < 0) break;
+    c = n;
+    if (Math.hypot(cx(c) - p.x, cy(c) - p.y) > GADGETS.gate.range) break;
+    last = c;
+  }
+  if (startD - f[last] * CELL < 450) return; // not worth it
+  placeGate(p, cx(last), cy(last), 'push');
+}
+
+/* ---------- Reviving ---------- */
+let reviveTimer = 0;
+const statueDanger = (pt, team) => players.filter(q => q.alive && q.team !== team && dist(q, pt) < 330 && lineOfSight(q, pt));
+function safeSpot(p, threats) {
+  let ex = 0, ey = 0; for (const q of threats) { ex += q.x; ey += q.y; }
+  ex /= threats.length; ey /= threats.length;
+  const base = Math.atan2(p.y - ey, p.x - ex);
+  let best = null, bs = -Infinity;
+  for (const da of [-.9, -.45, 0, .45, .9]) for (const d of [170, 250, 330]) {
+    const c = nearestFree(cellOf(p.x + Math.cos(base + da) * d, p.y + Math.sin(base + da) * d)), pt = { x: cx(c), y: cy(c) };
+    const seen = threats.some(q => lineOfSight(q, pt));
+    const sc = (seen ? 0 : 200) + Math.min(...threats.map(q => dist(q, pt))) - Math.abs(da) * 40;
+    if (sc > bs) { bs = sc; best = pt; }
+  }
+  return best;
+}
+function revive(d, h) {
+  let x = d.deathX, y = d.deathY;
+  if (blockedAt(x, y)) { const c = nearestFree(cellOf(x, y)); x = cx(c); y = cy(c); }
+  clearStatue(d);
+  d.alive = true; d.hp = REVIVE_HP; d.x = x; d.y = y; d.lastHit = time; d.wp = null; d.repath = 0; d.flee = 0; d.gasTime = 0;
+  h.reviving = false;
+  stats[d.team].revives++;
+  fx.push({ kind: 'warp', x, y, c: '#7be38f', born: performance.now() });
+  addLog([P(h), ' revived ', P(d)], 'rotate');
+}
+function updateRevives(dt) {
+  const assign = (reviveTimer -= dt) <= 0;
+  if (assign) reviveTimer = .4;
+  for (const q of players) q.reviving = false;
+  for (const d of players) {
+    if (d.alive || !d.statue) continue;
+    if (d.carriedBy) { d.deathX = d.carriedBy.x + 13; d.deathY = d.carriedBy.y + 9; }
+    let h = d.helper;
+    if (h && (!h.alive || carriedSlot(h) || h.helping !== d)) {
+      if (h.helping === d) h.helping = null;
+      if (d.carriedBy === h) { h.carrying = null; d.carriedBy = null; }
+      d.helper = h = null;
+    }
+    // Find the closest free teammate who can get here (and finish) before the respawn timer runs out
+    if (!h && assign) {
+      let best = null, bd = 700;
+      for (const q of players) {
+        if (!q.alive || q.team !== d.team || q.helping || q.carrying || carriedSlot(q) || q.flee > 0) continue;
+        const dd = dist(q, { x: d.deathX, y: d.deathY });
+        if (dd < bd && dd / PLAYER_SPEED + REVIVE_TIME + .5 < d.respawn) { bd = dd; best = q; }
+      }
+      if (best) { d.helper = best; best.helping = d; h = best; }
+    }
+    if (!h) continue;
+    const pt = { x: d.deathX, y: d.deathY };
+    if (h.carrying === d) { // drag to safety, then put them down and revive
+      if (dist(h, h.safe) < 30 || !statueDanger(h, d.team).length && dist(h, pt) > 60) {
+        h.carrying = null; d.carriedBy = null; d.deathX = h.x + 12; d.deathY = h.y;
+      }
+      continue;
+    }
+    if (dist(h, pt) < 30) {
+      const danger = statueDanger(pt, d.team);
+      if (danger.length && !d.movedOnce) {
+        h.carrying = d; d.carriedBy = h; d.movedOnce = true; h.safe = safeSpot(h, danger); h.repath = 0;
+        addLog([P(h), ' is dragging ', P(d), ' to safety'], 'rotate');
+        continue;
+      }
+      h.reviving = true;
+      if (time - h.lastHit > .5) d.reviveProg += dt / REVIVE_TIME;
+      if (d.reviveProg >= 1) revive(d, h);
+    }
+  }
+}
+
+function teamWipe(t) {
+  const st = stats[t], lost = Math.round(st.cash * RULES.wipePenalty / 100) * 100;
+  st.cash -= lost; st.wipes++; st.wiped = true;
+  // Override everyone's individual timer so the squad comes back together
+  for (const q of players) if (q.team === t) { q.respawn = WIPE_RESPAWN; clearStatue(q); } // wiped squads can't be revived
+  addLog(['TEAM WIPE — ', T(t), lost ? ' lose ' : RULES.wipePenalty ? ' lose nothing' : '', ...(lost ? [{ t: '−' + money(lost), c: '#ff6b6b' }] : []),
+    ` · group respawn in ${WIPE_RESPAWN}s`], 'steal major');
+  { const d = players.filter(q => q.team === t).sort((a, b) => b.respawn - a.respawn)[0], at = { x: d.deathX, y: d.deathY };
+    camEvent('wipe' + t, `TEAM WIPE — ${tn(t)} eliminated!`, 72, 3, () => at, 240); }
+  assignTimer = 0; // everyone re-thinks immediately
+}
+
+function updatePlayer(p, dt) {
+  if (!p.alive) {
+    p.respawn -= dt;
+    if (p.respawn <= 0) {
+      placeAtSpawn(p);
+      p.carrying = null; p.helping = null;
+      const st = stats[p.team];
+      if (st.wiped) {
+        st.wiped = false; addLog([T(p.team), ' are back in the fight'], 'rotate');
+        const t = p.team, tgt = slots[teamTarget[t]];
+        camEvent('rush' + t, `${tn(t)} respawn and rush to ${tgt ? slotLabel(tgt) : 'the fight'}`, 62, 9, () => teamCentre(t), 260);
+      }
+    }
+    return;
+  }
+  // Nearest visible enemy in range
+  const w = WEAPONS[p.weapon];
+  let foe = null, fd = w.range;
+  for (const q of players) if (q.alive && q.team !== p.team) { const d = dist(p, q); if (d < fd && lineOfSight(p, q)) { fd = d; foe = q; } }
+  // Shotgunners spot enemies a little beyond their range and push in
+  let chase = null;
+  if (!foe && p.weapon === 'SG' && !carriedSlot(p)) for (const q of players)
+    if (q.alive && q.team !== p.team && dist(p, q) < 230 && lineOfSight(p, q)) { chase = q; break; }
+  p.cd -= dt;
+  if (foe && p.cd <= 0 && !p.carrying && !p.reviving) { p.cd = w.cd * rand(.85, 1.15); shoot(p, foe, fd); }
+  if (time - p.lastHit > 5 && p.hp < 100) p.hp = Math.min(100, p.hp + 20 * dt);
+
+  // Target point (orbit around the objective so the squad spreads out)
+  // Last one standing and outnumbered? Maybe bail out and wait for the squad.
+  const mates = players.some(q => q !== p && q.team === p.team && q.alive);
+  const threats = players.filter(q => q.alive && q.team !== p.team && dist(p, q) < 340);
+  if (p.flee > 0) {
+    p.flee -= dt;
+    if (mates || !threats.length) p.flee = 0;
+  } else if ((p.fleeRoll -= dt) <= 0) {
+    p.fleeRoll = 2.5;
+    if (!mates && !carriedSlot(p) && threats.length >= 2 && Math.random() < (p.hp < 60 ? .8 : .45)) {
+      p.flee = rand(4, 7);
+      addLog([P(p), ` is outnumbered ${threats.length}v1 — retreating!`], 'rotate');
+      p.fleeGate = p.gadget === 'gate' && p.gcd.gate <= 0;
+    }
+  }
+  let g = goal(p);
+  const rv = p.helping && !carriedSlot(p) ? p.helping : null;
+  if (rv) g = p.carrying === rv ? { x: p.safe.x, y: p.safe.y, r: 0 } : { x: rv.deathX, y: rv.deathY, r: 0 };
+  else if (p.flee > 0 && threats.length) {
+    let ex = 0, ey = 0; for (const q of threats) { ex += q.x; ey += q.y; }
+    ex /= threats.length; ey /= threats.length;
+    const ax = p.x - ex, ay = p.y - ey, al = Math.hypot(ax, ay) || 1, sp0 = TSPAWN[p.team];
+    // Run home if home is roughly away from the threat, otherwise straight away from it
+    const homeAway = ((sp0.x - p.x) * ax + (sp0.y - p.y) * ay) > 0;
+    let fx = homeAway ? sp0.x : p.x + ax / al * 450, fy = homeAway ? sp0.y : p.y + ay / al * 450;
+    fx = Math.max(30, Math.min(W - 30, fx)); fy = Math.max(30, Math.min(H - 30, fy));
+    const c = nearestFree(cellOf(fx, fy));
+    g = { x: cx(c), y: cy(c), r: 0 };
+    if (p.fleeGate && p.gcd.gate <= 0) { // escape portal toward safety
+      p.fleeGate = false;
+      const hx = homeAway ? sp0.x : p.x + ax / al * GADGETS.gate.range, hy = homeAway ? sp0.y : p.y + ay / al * GADGETS.gate.range;
+      placeGate(p, hx, hy, 'escape');
+    }
+  } else if ((chase || (foe && fd > 60)) && p.weapon === 'SG' && !carriedSlot(p)) { const q = chase || foe; g = { x: q.x, y: q.y, r: 0 }; }
+  else if (foe && p.weapon === 'DMR' && fd < 150 && !carriedSlot(p)) // DMR backs off from close fights
+    g = { x: p.x + (p.x - foe.x) / fd * 120, y: p.y + (p.y - foe.y) / fd * 120, r: 0 };
+  gadgetAI(p, foe, dt);
+  if (!foe && !(p.flee > 0) && !threats.length) gatePush(p, g);
+  p.orbit += p.orbitSpd * dt;
+  let tx = g.x + Math.cos(p.orbit) * g.r, ty = g.y + Math.sin(p.orbit) * g.r;
+  if (grid[cellOf(tx, ty)]) { tx = g.x; ty = g.y; }
+  // Path: direct if clear, otherwise follow the flow field
+  p.repath -= dt;
+  if (p.repath <= 0) { p.repath = .2; p.wp = gateDetour(p, tx, ty) || pickWaypoint(p, tx, ty); }
+  const wx = p.wp ? p.wp.x : tx, wy = p.wp ? p.wp.y : ty;
+  const dx = wx - p.x, dy = wy - p.y, d = Math.hypot(dx, dy);
+  const sp = PLAYER_SPEED * (carriedSlot(p) || p.carrying ? .8 : 1) * (p.flee > 0 ? 1.05 : foe ? (p.weapon === 'SG' ? .9 : p.weapon === 'DMR' ? .5 : .65) : 1);
+  let mx = 0, my = 0;
+  if (d > 3) { const s = Math.min(sp * dt, d); mx = dx / d * s; my = dy / d * s; }
+  if (p.wp && d < 6) p.repath = 0;
+  if (foe && !(p.flee > 0) && !p.reviving && !p.carrying) { // strafe while fighting
+    const a = Math.atan2(foe.y - p.y, foe.x - p.x) + Math.PI / 2, s = Math.sin(time * 2.5 + p.id * 2 + p.team) * 45 * dt;
+    mx += Math.cos(a) * s; my += Math.sin(a) * s;
+  }
+  for (const c of [...clouds, ...VENTS.filter(v => ventState(v) !== 'idle')]) { // step out of gas & erupting vents
+    const cd = dist(p, c);
+    if (cd < c.r + 18) { const k = sp * dt * 1.2 / (cd || 1); mx += (p.x - c.x) * k; my += (p.y - c.y) * k; }
+  }
+  const ox = p.x, oy = p.y;
+  if (!blockedAt(p.x + mx, p.y)) p.x += mx;
+  if (!blockedAt(p.x, p.y + my)) p.y += my;
+  // Unstick: if we wanted to move but couldn't, snap toward nearest free cell centre
+  if ((mx || my) && Math.hypot(p.x - ox, p.y - oy) < .05 * Math.hypot(mx, my)) {
+    if ((p.stuck += dt) > .6) { const c = nearestFree(cellOf(p.x, p.y)); p.x = cx(c); p.y = cy(c); p.stuck = 0; p.repath = 0; }
+  } else p.stuck = 0;
+  p.ang = foe ? Math.atan2(foe.y - p.y, foe.x - p.x) : (mx || my) ? Math.atan2(my, mx) : p.ang;
+}
+
+function updateBox(slot) {
+  const box = slot.box, c = box.carrier;
+  if (c) {
+    box.x = c.x; box.y = c.y;
+    const st = STATIONS[box.dest];
+    if (dist(c, st) < 30) {
+      slot.station = { ...st, idx: box.dest, team: c.team, progress: 0, value: box.value, stealTeam: -1, steal: 0 };
+      slot.box = null;
+      addLog([P(c), ' started a cashout at ', GOLD(st.name), ' (' + money(box.value) + ')'], 'cash');
+      assignTeams(false);
+    }
+    return;
+  }
+  let best = null, bd = 22;
+  for (const p of players) if (p.alive && !carriedSlot(p) && !p.carrying) { const d = dist(p, box); if (d < bd) { bd = d; best = p; } }
+  if (!best) return;
+  box.carrier = best;
+  if (box.sealed) {
+    box.sealed = false; stats[best.team].cash += RULES.vaultReward;
+    addLog([P(best), ' cracked the ' + VAULTS[slot.vault].name + ' vault', ...(RULES.vaultReward ? [' ', GOLD('+' + money(RULES.vaultReward))] : [])], 'vault');
+  }
+  const used = new Set();
+  for (const o of slots) { if (o.station) used.add(o.station.idx); if (o.box && o.box.dest >= 0 && o !== slot) used.add(o.box.dest); }
+  const order = STATIONS.map((s, i) => [i, dist(s, best)]).filter(([i]) => !used.has(i)).sort((a, b) => a[1] - b[1]);
+  box.dest = order[Math.random() < .65 || order.length < 2 ? 0 : 1][0];
+  addLog([P(best), ' grabbed the cash — heading to ' + STATIONS[box.dest].name], 'cash');
+  assignTeams(false);
+}
+
+function updateStation(slot, dt) {
+  const s = slot.station;
+  s.progress += dt / CASHOUT_TIME;
+  const counts = TEAMS.map(() => 0);
+  for (const p of players) if (p.alive && dist(p, s) < STATION_R) counts[p.team]++;
+  s.contest = counts.filter(n => n > 0).length > 1;
+  let best = -1, bc = 0;
+  counts.forEach((n, t) => { if (t !== s.team && n > bc) { bc = n; best = t; } });
+  if (counts[s.team] === 0 && best >= 0) {
+    if (s.stealTeam !== best) { s.stealTeam = best; s.steal = 0; }
+    s.steal += dt * (.7 + .3 * bc) / STEAL_TIME;
+    if (s.steal >= 1) {
+      addLog([T(best), ' stole the cashout from ', T(s.team), ' at ' + s.name + '!'], 'steal');
+      camEvent('stolen' + slot.i, `STOLEN! ${tn(best)} take ${s.name} from ${tn(s.team)}`, 80, 4, () => slot.station, 200);
+      s.team = best; s.steal = 0; s.stealTeam = -1;
+      assignTeams(false);
+    }
+  } else {
+    s.steal = Math.max(0, s.steal - dt / STEAL_TIME);
+    if (s.steal === 0) s.stealTeam = -1;
+  }
+  if (s.progress >= 1) completeCashout(slot);
+}
+
+function standings() {
+  return TEAMS.map((_, i) => i).sort((a, b) =>
+    stats[b].cash - stats[a].cash || stats[b].cashouts - stats[a].cashouts || stats[b].kills - stats[a].kills);
+}
+
+function completeCashout(slot) {
+  const s = slot.station, st = stats[s.team];
+  st.cash += s.value; st.cashouts++; totalCashouts++;
+  addLog([T(s.team), ' cashed out ', GOLD(money(s.value)), ' at ' + s.name], 'cash major');
+  { const at = { x: s.x, y: s.y }; camEvent('done' + slot.i, `${tn(s.team)} cash out ${money(s.value)} at ${s.name}!`, 75, 3.5, () => at, 220); }
+  slot.station = null;
+  const top = standings()[0];
+  if (top !== leader) { leader = top; addLog([T(top), ' take the lead with ' + money(stats[top].cash)], 'major'); }
+  if (RULES.winCash && st.cash >= RULES.winCash) return endMatch();
+  if (RULES.winCash && st.cash + s.value >= RULES.winCash) addLog([T(s.team), ' are on MATCH POINT!'], 'major');
+  if (totalCashouts >= RULES.target) return endMatch();
+  const othersLive = slots.filter(o => o !== slot && isLive(o)).length;
+  if (RULES.slots > 1 && totalCashouts + othersLive >= RULES.target) {
+    slot.idle = true; slot.vault = -1;
+    addLog(['Final cashout in play — every team converges!'], 'major');
+  } else schedule(slot, rand(6, 10));
+  assignTeams(false);
+}
+
+function endMatch() {
+  over = true;
+  const order = standings(), w = order[0];
+  addLog(['Match over — ', T(w), ' win with ' + money(stats[w].cash)], 'major');
+  updateHud(true);
+  tournamentMatchOver(order);
+}
+
+function step(dt) {
+  time += dt;
+  for (const s of slots) if (!isLive(s) && !s.idle) { s.timer -= dt; if (s.timer <= 0) openVault(s); }
+  assignTimer -= dt;
+  if (assignTimer <= 0) assignTeams(true);
+  for (const p of players) updatePlayer(p, dt);
+  updateGadgets(dt);
+  updateRevives(dt);
+  updateHazards(dt);
+  for (const s of slots) {
+    if (over) return;
+    if (s.box) updateBox(s);
+    if (s.station) updateStation(s, dt);
+  }
+}
+
+/* ================= Camera ================= */
+const cv = $('c'), ctx = cv.getContext('2d');
+const mm = $('minimap'), mctx = mm.getContext('2d');
+const MMW = 260, MMH = 170;
+const cam = { x: 0, y: 0, zoom: 1, zoomBias: 1, auto: true, lock: null, focus: 0, switched: 0 };
+let dpr = 1, cw = 0, ch = 0, mmStatic = null;
+
+function resize() {
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cw = innerWidth; ch = innerHeight;
+  cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr);
+  mm.width = Math.round(MMW * dpr); mm.height = Math.round(MMH * dpr);
+  buildMinimapStatic();
+}
+const fitScale = () => Math.min(cw / W, ch / H) * .95;
+const viewScale = () => fitScale() * cam.zoom;
+function toWorld(sx, sy) { const k = viewScale(); return { x: (sx - cw / 2) / k + cam.x, y: (sy - ch / 2) / k + cam.y }; }
+function clampCam() { cam.x = Math.max(0, Math.min(W, cam.x)); cam.y = Math.max(0, Math.min(H, cam.y)); }
+
+function heat(s) {
+  if (s.idle) return -99;
+  const pt = slotPoint(s);
+  let n = 0;
+  for (const p of players) if (p.alive && dist(p, pt) < 400) n++;
+  if (s.station && (s.station.stealTeam >= 0 || s.station.contest)) n += 3;
+  if (s.box && s.box.carrier) n += 2;
+  if (!isLive(s)) n -= 6;
+  return n;
+}
+/* ---------- Director: picks the most interesting thing happening and frames it ---------- */
+const director = { shot: null, holdUntil: 0, nextEval: 0, events: [], label: '' };
+// Timed story beats pushed by the game (team respawn rush, wipes, steals...)
+function camEvent(key, label, prio, dur, getPt, radius) {
+  director.events = director.events.filter(e => e.key !== key);
+  director.events.push({ key, label, prio, born: time, until: time + dur, getPt, radius });
+}
+const teamCentre = t => { const a = players.filter(p => p.team === t && p.alive); return a.length ? { x: a.reduce((s, p) => s + p.x, 0) / a.length, y: a.reduce((s, p) => s + p.y, 0) / a.length } : null; };
+const nearCount = (pt, r) => players.reduce((n, p) => n + (p.alive && dist(p, pt) < r ? 1 : 0), 0);
+const teamsNear = (pt, r) => new Set(players.filter(p => p.alive && dist(p, pt) < r).map(p => p.team));
+const tn = i => TEAMS[i].name;
+function directorCandidates() {
+  const c = [];
+  for (const s of slots) {
+    if (s.station) {
+      const st = s.station;
+      if (st.stealTeam >= 0) c.push({ key: 'steal' + s.i, prio: 85 + 25 * st.steal, label: `Steal in progress — ${tn(st.stealTeam)} taking ${st.name} from ${tn(st.team)}`, pt: () => s.station || slotPoint(s), radius: 170 });
+      else if (st.contest) c.push({ key: 'fightcash' + s.i, prio: 55 + 3 * nearCount(st, 260) + (st.progress > .85 ? 20 : 0), label: `Fight for the ${st.name} cashout (${Math.floor(st.progress * 100)}%)`, pt: () => s.station || slotPoint(s), radius: 230 });
+      else c.push({ key: 'cash' + s.i, prio: 22 + (st.progress > .85 ? 30 : st.progress * 10) + 2 * nearCount(st, 300), label: st.progress > .85 ? `${tn(st.team)} about to cash out ${money(st.value)} at ${st.name}` : `${tn(st.team)} holding ${st.name} (${Math.floor(st.progress * 100)}%)`, pt: () => s.station || slotPoint(s), radius: 260 });
+    } else if (s.box) {
+      const bx = s.box;
+      if (bx.carrier) {
+        const car = bx.carrier, dest = STATIONS[bx.dest], chasers = players.filter(p => p.alive && p.team !== car.team && dist(p, car) < 320).length;
+        c.push({ key: 'escort' + s.i, prio: 58 + 5 * nearCount(car, 280) + 8 * chasers, label: chasers ? `${car.name} running ${money(bx.value)} to ${dest.name} — ${chasers} chasing!` : `${tn(car.team)} escorting ${money(bx.value)} to ${dest.name}`,
+          pt: () => { const cc = s.box && s.box.carrier; if (!cc) return slotPoint(s); const d2 = STATIONS[s.box.dest]; return { x: cc.x + (d2.x - cc.x) * .2, y: cc.y + (d2.y - cc.y) * .2 }; }, radius: 240 });
+      } else {
+        const n = teamsNear(bx, 300).size;
+        c.push({ key: 'loose' + s.i, prio: 38 + 9 * n, label: n > 1 ? `Scramble for ${money(bx.value)} at the ${VAULTS[s.vault].name} vault` : `${money(bx.value)} up for grabs at ${VAULTS[s.vault].name}`, pt: () => s.box || slotPoint(s), radius: 230 });
+      }
+    }
+  }
+  // Firefights: clusters of recently-hit players from 2+ teams
+  const hot = players.filter(p => p.alive && time - p.lastHit < 1.5);
+  const used = new Set();
+  for (const h of hot) {
+    if (used.has(h)) continue;
+    const grp = hot.filter(q => dist(q, h) < 300);
+    grp.forEach(q => used.add(q));
+    const ts = new Set(grp.map(q => q.team));
+    const near = players.filter(q => q.alive && dist(q, h) < 300);
+    const tsAll = new Set(near.map(q => q.team));
+    if (tsAll.size < 2) continue;
+    const ctr = { x: near.reduce((a, q) => a + q.x, 0) / near.length, y: near.reduce((a, q) => a + q.y, 0) / near.length };
+    c.push({ key: 'fight' + [...tsAll].sort().join('-'), prio: 36 + 6 * near.length + 4 * grp.length,
+      label: `Firefight — ${[...tsAll].map(tn).join(' vs ')}`, pt: () => ctr, radius: 220 });
+  }
+  // Revives and drags
+  for (const d of players) if (!d.alive && d.statue && (d.reviveProg > .15 || d.carriedBy)) {
+    const enemies = players.filter(q => q.alive && q.team !== d.team && dist(q, { x: d.deathX, y: d.deathY }) < 330).length;
+    c.push({ key: 'rev' + d.name, prio: 34 + 8 * enemies + (d.carriedBy ? 6 : 0), label: d.carriedBy ? `${d.carriedBy.name} dragging ${d.name} out of danger` : `${d.helper ? d.helper.name : 'Teammate'} reviving ${d.name}${enemies ? ' under fire!' : ''}`,
+      pt: () => ({ x: d.deathX, y: d.deathY }), radius: 180 });
+  }
+  // Story beats (decay over their lifetime)
+  director.events = director.events.filter(e => e.until > time);
+  for (const e of director.events) {
+    const pt = e.getPt(); if (!pt) continue;
+    const life = (time - e.born) / (e.until - e.born);
+    c.push({ key: e.key, prio: e.prio * (1 - .5 * life), label: e.label, pt: () => e.getPt() || pt, radius: e.radius });
+  }
+  // Fallback: busiest objective
+  slots.forEach(s => { if (!s.idle) c.push({ key: 'obj' + s.i, prio: 10 + heat(s), label: 'Objective ' + (s.i + 1) + ': ' + slotLabel(s), pt: () => slotPoint(s), radius: 300 }); });
+  return c;
+}
+function updateCamera(dt) {
+  if (!cam.auto) { $('director').classList.remove('show'); return clampCam(); }
+  const now = performance.now();
+  let target, radius;
+  if (cam.lock !== null) { // locked to an objective
+    const s = slots[Math.min(cam.lock, slots.length - 1)];
+    target = slotPoint(s); radius = 300; director.label = 'Locked on objective ' + (s.i + 1) + ': ' + slotLabel(s); director.shot = null;
+  } else {
+    if (now >= director.nextEval) {
+      director.nextEval = now + 400;
+      const cands = directorCandidates();
+      const cur = director.shot && cands.find(c => c.key === director.shot.key);
+      let best = null;
+      for (const c of cands) { const v = c.prio + (cur && c.key === cur.key ? 15 : 0); if (!best || v > best.v) best = { c, v }; }
+      if (best) {
+        const holding = cur && now < director.holdUntil;
+        if (!cur || (!holding && best.c.key !== cur.key) || best.c.prio > cur.prio + 35) {
+          if (!cur || best.c.key !== cur.key) director.holdUntil = now + 4500;
+          director.shot = best.c;
+        } else director.shot = cur;
+      }
+    }
+    if (!director.shot) return clampCam();
+    target = director.shot.pt(); radius = director.shot.radius; director.label = director.shot.label;
+  }
+  const a = 1 - Math.exp(-2.6 * dt);
+  cam.x += (target.x - cam.x) * a; cam.y += (target.y - cam.y) * a;
+  const want = Math.max(1, Math.min(3.4, (Math.min(cw, ch) * .42) / (radius * fitScale()))) * cam.zoomBias;
+  cam.zoom += (want - cam.zoom) * (1 - Math.exp(-1.6 * dt));
+  clampCam();
+  const cap = $('director');
+  if (cap._t !== director.label) { cap._t = director.label; cap.textContent = '🎥 ' + director.label; cap.classList.remove('show'); cap.offsetHeight; }
+  cap.classList.add('show');
+}
+function setAuto(on, lock = null) {
+  cam.auto = on; cam.lock = on ? lock : null;
+  const b = $('camBtn');
+  b.classList.toggle('active', on);
+  b.textContent = !on ? 'Free cam' : lock === null ? 'Auto cam' : 'Cam: Obj ' + (lock + 1);
+}
+
+let drag = null;
+cv.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY }; cv.setPointerCapture(e.pointerId); cv.classList.add('dragging'); });
+cv.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const k = viewScale(), dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  if (cam.auto && Math.hypot(dx, dy) < 4) return;
+  if (cam.auto) setAuto(false);
+  cam.x -= dx / k; cam.y -= dy / k; drag = { x: e.clientX, y: e.clientY }; clampCam();
+});
+const endDrag = () => { drag = null; cv.classList.remove('dragging'); };
+cv.addEventListener('pointerup', endDrag);
+cv.addEventListener('pointercancel', endDrag);
+cv.addEventListener('wheel', e => {
+  e.preventDefault();
+  const before = toWorld(e.clientX, e.clientY);
+  cam.zoom = Math.max(.9, Math.min(5, cam.zoom * Math.exp(-e.deltaY * .0015)));
+  if (cam.auto) { cam.zoomBias = Math.max(.6, Math.min(1.8, cam.zoomBias * Math.exp(-e.deltaY * .0015))); return; }
+  const after = toWorld(e.clientX, e.clientY);
+  cam.x += before.x - after.x; cam.y += before.y - after.y; clampCam();
+}, { passive: false });
+
+const mmScale = () => Math.min(MMW / W, MMH / H);
+mm.addEventListener('pointerdown', e => {
+  const r = mm.getBoundingClientRect(), k = mmScale();
+  cam.x = (e.clientX - r.left - (MMW - W * k) / 2) / k; cam.y = (e.clientY - r.top - (MMH - H * k) / 2) / k;
+  setAuto(false); clampCam();
+});
+
+/* ================= Rendering ================= */
+function polyline(c, pts) { c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]); }
+
+function drawBuilding(c, b, k, mini) {
+  const { x, y, w, h, kind } = b;
+  if (mini) {
+    c.fillStyle = kind === 'stall' ? STALL_COLORS[b.seed % 5] : kind === 'glass' ? '#2c5568' : kind === 'neon' ? '#5a2a7a' : '#2f3742';
+    c.fillRect(x, y, w, h); return;
+  }
+  c.fillStyle = 'rgba(0,0,0,.38)'; c.fillRect(x + 10, y + 12, w, h); // drop shadow
+  switch (kind) {
+    case 'stall': {
+      const col = STALL_COLORS[b.seed % 5];
+      for (let i = 0; i < 6; i++) { c.fillStyle = i % 2 ? alpha(col, .55) : col; c.fillRect(x + i * w / 6, y, w / 6 + .5, h); }
+      c.fillStyle = 'rgba(0,0,0,.25)'; c.fillRect(x, y + h - 8, w, 8);
+      break;
+    }
+    case 'car': {
+      c.fillStyle = b.seed % 2 ? '#3a2f2a' : '#2a3a44'; c.fillRect(x, y, w, h);
+      c.fillStyle = b.seed % 2 ? '#ff9f43' : '#36e0ff'; c.fillRect(x, y + h / 2 - 2, w, 4);
+      c.strokeStyle = 'rgba(0,0,0,.4)'; c.lineWidth = 2; c.beginPath();
+      for (let i = 1; i < w / 80; i++) { c.moveTo(x + i * 80, y); c.lineTo(x + i * 80, y + h); } c.stroke();
+      break;
+    }
+    case 'glass': {
+      c.fillStyle = '#1d3a4a'; c.fillRect(x, y, w, h);
+      c.strokeStyle = 'rgba(140,220,255,.25)'; c.lineWidth = 1.5; c.beginPath();
+      for (let gx = x + 20; gx < x + w; gx += 20) { c.moveTo(gx, y); c.lineTo(gx, y + h); }
+      for (let gy = y + 20; gy < y + h; gy += 20) { c.moveTo(x, gy); c.lineTo(x + w, gy); } c.stroke();
+      c.fillStyle = 'rgba(160,230,255,.08)'; c.fillRect(x, y, w * .45, h);
+      break;
+    }
+    case 'tower': {
+      c.fillStyle = '#332e26'; c.fillRect(x, y, w, h);
+      c.fillStyle = '#3e382e'; c.fillRect(x + 8, y + 8, w - 16, h - 16);
+      c.fillStyle = '#e8dcb5'; c.beginPath(); c.arc(x + w / 2, y + h / 2, 22, 0, TAU); c.fill();
+      c.strokeStyle = '#222'; c.lineWidth = 3; const a = time * .3;
+      c.beginPath(); c.moveTo(x + w / 2, y + h / 2); c.lineTo(x + w / 2 + Math.cos(a) * 16, y + h / 2 + Math.sin(a) * 16);
+      c.moveTo(x + w / 2, y + h / 2); c.lineTo(x + w / 2 + Math.cos(a / 12) * 10, y + h / 2 + Math.sin(a / 12) * 10); c.stroke();
+      break;
+    }
+    case 'scaffold': {
+      c.fillStyle = '#2a2716'; c.fillRect(x, y, w, h);
+      c.save(); c.beginPath(); c.rect(x, y, w, h); c.clip();
+      c.strokeStyle = '#d9a400'; c.lineWidth = 8;
+      for (let i = -h; i < w; i += 28) { c.beginPath(); c.moveTo(x + i, y + h); c.lineTo(x + i + h, y); c.stroke(); }
+      c.restore();
+      c.fillStyle = 'rgba(20,18,10,.7)'; c.fillRect(x + 10, y + 10, w - 20, h - 20);
+      break;
+    }
+    case 'crane': {
+      c.fillStyle = '#4a3c10'; c.fillRect(x, y, w, h);
+      c.strokeStyle = '#ffcc33'; c.lineWidth = 3; c.strokeRect(x + 6, y + 6, w - 12, h - 12);
+      c.beginPath(); c.moveTo(x + 6, y + 6); c.lineTo(x + w - 6, y + h - 6); c.moveTo(x + w - 6, y + 6); c.lineTo(x + 6, y + h - 6); c.stroke();
+      break;
+    }
+    case 'neon': {
+      c.fillStyle = '#1c1430'; c.fillRect(x, y, w, h);
+      c.save(); c.shadowColor = '#ff4fa3'; c.shadowBlur = 18 * Math.min(1, k * 2);
+      c.strokeStyle = '#ff4fa3'; c.lineWidth = 3; c.strokeRect(x + 10, y + 10, w - 20, h - 20);
+      c.shadowColor = '#36e0ff'; c.strokeStyle = '#36e0ff';
+      c.beginPath(); c.moveTo(x + 30, y + h / 2); c.lineTo(x + w - 30, y + h / 2); c.stroke(); c.restore();
+      break;
+    }
+    case 'pillar': {
+      c.fillStyle = '#3a414b'; c.fillRect(x, y, w, h);
+      c.fillStyle = '#4a525d'; c.fillRect(x + 6, y + 6, w - 12, h - 12);
+      break;
+    }
+    case 'furnace': {
+      c.fillStyle = '#2a211b'; c.fillRect(x, y, w, h);
+      c.fillStyle = '#3a2c22'; c.fillRect(x + 8, y + 8, w - 16, h - 16);
+      const glow = .55 + .25 * Math.sin(performance.now() / 300 + b.seed);
+      c.fillStyle = `rgba(255,110,20,${glow})`; c.fillRect(x + w * .2, y + h - 22, w * .6, 10);
+      c.fillStyle = '#1a1512'; c.beginPath(); c.arc(x + w * .7, y + 24, 14, 0, TAU); c.fill();
+      c.strokeStyle = '#5a4535'; c.lineWidth = 3; c.stroke();
+      break;
+    }
+    case 'container': {
+      const cols = ['#6b2e24', '#24506b', '#6b5a24', '#2e6b3c'], col = cols[b.seed % 4];
+      c.fillStyle = col; c.fillRect(x, y, w, h);
+      c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = 2; c.beginPath();
+      if (h > w) for (let i = y + 12; i < y + h; i += 12) { c.moveTo(x + 3, i); c.lineTo(x + w - 3, i); }
+      else for (let i = x + 12; i < x + w; i += 12) { c.moveTo(i, y + 3); c.lineTo(i, y + h - 3); }
+      c.stroke();
+      break;
+    }
+    case 'silo': {
+      const r0 = Math.min(w, h) / 2;
+      c.fillStyle = '#3a4048'; c.beginPath(); c.arc(x + w / 2, y + h / 2, r0, 0, TAU); c.fill();
+      c.strokeStyle = '#4c535c'; c.lineWidth = 3; c.beginPath(); c.arc(x + w / 2, y + h / 2, r0 * .65, 0, TAU); c.stroke();
+      c.fillStyle = '#ff8a2a'; c.beginPath(); c.arc(x + w / 2, y + h / 2, 4, 0, TAU); c.fill();
+      return;
+    }
+    default: {
+      const pal = { old: ['#2c241e', '#3a2f27', '#4a3b30'], warehouse: ['#252b31', '#2f363e', '#3a434c'], block: ['#20262f', '#2a313c', '#343d4a'] }[kind];
+      if (!pal) break;
+      c.fillStyle = pal[0]; c.fillRect(x, y, w, h);
+      c.fillStyle = pal[1]; c.fillRect(x + 7, y + 7, w - 14, h - 14);
+      c.strokeStyle = pal[2]; c.lineWidth = 2;
+      if (kind === 'old') { // ridge roof + chimney
+        c.beginPath(); c.moveTo(x + 7, y + h / 2); c.lineTo(x + w - 7, y + h / 2); c.stroke();
+        c.fillStyle = '#563f33'; c.fillRect(x + w * .7, y + 14, 14, 14);
+      } else if (kind === 'warehouse') {
+        c.beginPath(); for (let i = x + 20; i < x + w - 7; i += 20) { c.moveTo(i, y + 7); c.lineTo(i, y + h - 7); } c.stroke();
+      } else { // rooftop units
+        c.fillStyle = pal[2]; c.fillRect(x + 20, y + 20, 30, 22); c.fillRect(x + w - 50, y + h - 40, 24, 24);
+      }
+    }
+  }
+  c.strokeStyle = 'rgba(255,255,255,.06)'; c.lineWidth = 1.5 / k; c.strokeRect(x, y, w, h);
+}
+
+function drawLiquid(c, k, mini, lava) {
+  const col = lava ? ['#2a0a02', '#c23400', '#ff7a1a'] : ['#0c2433', '#0f3448', '#13425a'];
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  for (const rv of RIVERS) {
+    c.strokeStyle = col[0]; c.lineWidth = rv.w + 18; polyline(c, rv.pts); c.stroke();
+    c.strokeStyle = col[1]; c.lineWidth = rv.w; polyline(c, rv.pts); c.stroke();
+    c.strokeStyle = col[2]; c.lineWidth = rv.w - 40; polyline(c, rv.pts); c.stroke();
+  }
+  for (const [x, y, r] of PONDS) [[r + 9, 0], [r, 1], [r - 25, 2]].forEach(([rr, i]) => { c.fillStyle = col[i]; c.beginPath(); c.arc(x, y, rr, 0, TAU); c.fill(); });
+  for (const g of RINGS) {
+    const mid = (g.r1 + g.r2) / 2, w = g.r2 - g.r1;
+    [[w + 18, 0], [w, 1], [w - 50, 2]].forEach(([lw, i]) => { c.strokeStyle = col[i]; c.lineWidth = lw; c.beginPath(); c.arc(g.x, g.y, mid, 0, TAU); c.stroke(); });
+  }
+  if (mini) { c.lineCap = 'butt'; return; }
+  // Animated surface
+  c.strokeStyle = lava ? 'rgba(255,220,120,.35)' : 'rgba(120,200,240,.18)'; c.lineWidth = 3; c.setLineDash(lava ? [10, 34] : [18, 40]);
+  for (const rv of RIVERS) {
+    c.lineDashOffset = -time * (lava ? 12 : 30); polyline(c, rv.pts); c.stroke();
+    c.lineDashOffset = -time * (lava ? 9 : 22) + 20; c.save(); c.translate(14, 0); polyline(c, rv.pts); c.stroke(); c.restore();
+  }
+  for (const g of RINGS) for (let i = 0; i < 3; i++) {
+    c.lineDashOffset = -time * (8 + i * 4) * (i % 2 ? 1 : -1);
+    c.beginPath(); c.arc(g.x, g.y, g.r1 + 30 + i * 45, 0, TAU); c.stroke();
+  }
+  for (const [x, y, r] of PONDS) { c.lineDashOffset = -time * 10; c.beginPath(); c.arc(x, y, r * .55, 0, TAU); c.stroke(); }
+  c.setLineDash([]); c.lineDashOffset = 0; c.lineCap = 'butt';
+  if (lava) { // heat glow + bubbles
+    for (const g of RINGS) {
+      const gr = c.createRadialGradient(g.x, g.y, g.r2 - 20, g.x, g.y, g.r2 + 90);
+      gr.addColorStop(0, 'rgba(255,90,0,.22)'); gr.addColorStop(1, 'rgba(255,90,0,0)');
+      c.fillStyle = gr; c.beginPath(); c.arc(g.x, g.y, g.r2 + 90, 0, TAU); c.fill();
+      for (let i = 0; i < 10; i++) {
+        const a = i * 2.39 + Math.floor(time * .7 + i) * 1.3, rr = g.r1 + 25 + ((i * 53) % (g.r2 - g.r1 - 50)), ph = (time * .7 + i) % 1;
+        c.fillStyle = `rgba(255,210,110,${.5 * (1 - ph)})`; c.beginPath(); c.arc(g.x + Math.cos(a) * rr, g.y + Math.sin(a) * rr, 4 + ph * 9, 0, TAU); c.fill();
+      }
+    }
+    for (const [x, y, r] of PONDS) {
+      const gr = c.createRadialGradient(x, y, r - 10, x, y, r + 70);
+      gr.addColorStop(0, 'rgba(255,90,0,.2)'); gr.addColorStop(1, 'rgba(255,90,0,0)');
+      c.fillStyle = gr; c.beginPath(); c.arc(x, y, r + 70, 0, TAU); c.fill();
+    }
+  }
+}
+
+function drawBridges(c, k, mini) {
+  const lava = MAP.theme === 'foundry', warn = bridgeWarn(), blink = Math.floor(performance.now() / 250) % 2;
+  for (const b of BRIDGES) {
+    const { x, y, w, h } = b, vertical = h > w;
+    if (b.up) { // retracted: just the two stubs with hazard lights
+      const s = 26;
+      c.fillStyle = '#3a3f46';
+      if (vertical) { c.fillRect(x, y, w, s); c.fillRect(x, y + h - s, w, s); } else { c.fillRect(x, y, s, h); c.fillRect(x + w - s, y, s, h); }
+      if (!mini) {
+        c.fillStyle = warn && blink ? '#ffcc33' : '#ff3b2f';
+        const pts = vertical ? [[x + 8, y + s], [x + w - 8, y + s], [x + 8, y + h - s], [x + w - 8, y + h - s]]
+                             : [[x + s, y + 8], [x + s, y + h - 8], [x + w - s, y + 8], [x + w - s, y + h - 8]];
+        for (const [px, py] of pts) { c.beginPath(); c.arc(px, py, 5, 0, TAU); c.fill(); }
+        c.fillStyle = 'rgba(255,220,180,.85)'; c.font = '700 11px "Segoe UI",system-ui,sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.fillText(warn ? 'LOWERING' : 'RAISED', x + w / 2, y + h / 2);
+      }
+      continue;
+    }
+    c.fillStyle = 'rgba(0,0,0,.35)'; c.fillRect(x + 6, y + 10, w, h);
+    c.fillStyle = lava ? '#565c64' : '#4a3a2c'; c.fillRect(x, y, w, h);
+    if (mini) continue;
+    c.strokeStyle = lava ? '#40454c' : '#3a2d22'; c.lineWidth = 2; c.beginPath();
+    if (vertical) for (let i = y + 10; i < y + h; i += 12) { c.moveTo(x + 4, i); c.lineTo(x + w - 4, i); }
+    else for (let i = x + 10; i < x + w; i += 12) { c.moveTo(i, y + 4); c.lineTo(i, y + h - 4); }
+    c.stroke();
+    c.fillStyle = lava ? '#7d848c' : '#6b5442';
+    if (vertical) { c.fillRect(x, y, 5, h); c.fillRect(x + w - 5, y, 5, h); } else { c.fillRect(x, y, w, 5); c.fillRect(x, y + h - 5, w, 5); }
+    if (b.group !== undefined && warn) { // about to rise
+      c.strokeStyle = blink ? '#ffcc33' : '#ff3b2f'; c.lineWidth = 4; c.setLineDash([12, 10]); c.strokeRect(x + 2, y + 2, w - 4, h - 4); c.setLineDash([]);
+    }
+  }
+}
+
+function drawVents(c, k) {
+  const now = performance.now();
+  for (const v of VENTS) {
+    const st = ventState(v);
+    c.fillStyle = '#1b1714'; c.beginPath(); c.arc(v.x, v.y, v.r, 0, TAU); c.fill();
+    c.strokeStyle = '#3a332d'; c.lineWidth = 4; c.beginPath();
+    for (let i = -2; i <= 2; i++) { c.moveTo(v.x - v.r * .7, v.y + i * 14); c.lineTo(v.x + v.r * .7, v.y + i * 14); } c.stroke();
+    c.strokeStyle = st === 'idle' ? '#4a3a2c' : '#ff8a2a'; c.lineWidth = 3 / k; c.beginPath(); c.arc(v.x, v.y, v.r, 0, TAU); c.stroke();
+    if (st === 'warn') {
+      c.fillStyle = `rgba(255,120,20,${.15 + .15 * Math.sin(now / 80)})`; c.beginPath(); c.arc(v.x, v.y, v.r, 0, TAU); c.fill();
+    } else if (st === 'active') {
+      const gr = c.createRadialGradient(v.x, v.y, 4, v.x, v.y, v.r + 10);
+      gr.addColorStop(0, 'rgba(255,240,180,.95)'); gr.addColorStop(.5, 'rgba(255,120,20,.7)'); gr.addColorStop(1, 'rgba(200,40,0,0)');
+      c.fillStyle = gr; c.beginPath(); c.arc(v.x, v.y, v.r + 10, 0, TAU); c.fill();
+      for (let i = 0; i < 8; i++) {
+        const a = i * .785 + now / 200, rr = (now / 6 + i * 23) % v.r;
+        c.fillStyle = 'rgba(255,200,90,.8)'; c.beginPath(); c.arc(v.x + Math.cos(a) * rr, v.y + Math.sin(a) * rr, 3, 0, TAU); c.fill();
+      }
+    }
+    if (st !== 'idle') {
+      c.fillStyle = '#ffb36b'; c.font = `700 ${10 / k}px "Segoe UI",system-ui,sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillText(st === 'warn' ? 'VENT ERUPTING' : 'VENT', v.x, v.y - v.r - 10);
+    }
+  }
+}
+
+function drawMap(c, k, mini) {
+  const foundry = MAP.theme === 'foundry';
+  c.fillStyle = foundry ? '#141110' : '#11161c'; c.fillRect(0, 0, W, H);
+  for (const d of DISTRICTS) { c.fillStyle = d.c; c.fillRect(d.x, d.y, d.w, d.h); }
+  if (!mini) {
+    c.strokeStyle = foundry ? 'rgba(255,255,255,.035)' : 'rgba(255,255,255,.025)'; c.lineWidth = 1 / k; c.beginPath();
+    const step = foundry ? 80 : 100;
+    for (let x = 0; x <= W; x += step) { c.moveTo(x, 0); c.lineTo(x, H); }
+    for (let y = 0; y <= H; y += step) { c.moveTo(0, y); c.lineTo(W, y); }
+    c.stroke();
+    if (foundry) { // rivets on floor plates
+      c.fillStyle = 'rgba(255,255,255,.05)';
+      for (let x = 80; x < W; x += 80) for (let y = 80; y < H; y += 80) c.fillRect(x - 2, y - 2, 4, 4);
+    }
+  }
+  // Rails
+  if (RAILS.length) {
+    c.strokeStyle = '#2b2f35'; c.lineWidth = mini ? 2 : 4;
+    for (const ry of RAILS) { c.beginPath(); c.moveTo(1780, ry - 9); c.lineTo(W, ry - 9); c.moveTo(1780, ry + 9); c.lineTo(W, ry + 9); c.stroke(); }
+    if (!mini) {
+      c.strokeStyle = '#24282d'; c.lineWidth = 5; c.beginPath();
+      for (const ry of RAILS) for (let x = 1790; x < W; x += 22) { c.moveTo(x, ry - 15); c.lineTo(x, ry + 15); }
+      c.stroke();
+    }
+  }
+  // Roads / catwalks
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  c.strokeStyle = foundry ? '#26231f' : '#1a2028'; c.lineWidth = foundry ? 50 : 56;
+  for (const r of ROADS) { polyline(c, r); c.stroke(); }
+  if (!mini) {
+    if (foundry) {
+      c.strokeStyle = 'rgba(255,170,60,.13)'; c.lineWidth = 2; c.setLineDash([4, 6]);
+      for (const r of ROADS) for (const off of [-20, 20]) { c.save(); c.translate(0, off); polyline(c, r); c.stroke(); c.restore(); }
+      c.setLineDash([]);
+    } else {
+      c.strokeStyle = 'rgba(255,214,90,.16)'; c.lineWidth = 2.5; c.setLineDash([26, 22]);
+      for (const r of ROADS) { polyline(c, r); c.stroke(); }
+      c.setLineDash([]);
+    }
+  }
+  // Pipes
+  for (const pp of PIPES) {
+    c.strokeStyle = '#2f3338'; c.lineWidth = 22; polyline(c, pp); c.stroke();
+    if (!mini) { c.strokeStyle = '#454b52'; c.lineWidth = 7; polyline(c, pp); c.stroke(); }
+  }
+  // Trees (park canopy)
+  if (!mini) for (const [x, y, r] of TREES) {
+    c.fillStyle = 'rgba(0,0,0,.3)'; c.beginPath(); c.arc(x + 8, y + 10, r, 0, TAU); c.fill();
+    c.fillStyle = '#1e3d29'; c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill();
+    c.fillStyle = '#285a36'; c.beginPath(); c.arc(x - r * .25, y - r * .25, r * .55, 0, TAU); c.fill();
+  }
+  drawLiquid(c, k, mini, foundry);
+  // Island core plate
+  if (!mini) for (const g of RINGS) {
+    c.strokeStyle = '#4a3a2c'; c.lineWidth = 6; c.beginPath(); c.arc(g.x, g.y, g.r1 - 6, 0, TAU); c.stroke();
+    c.strokeStyle = 'rgba(255,140,40,.25)'; c.lineWidth = 2; c.setLineDash([8, 8]); c.beginPath(); c.arc(g.x, g.y, g.r1 - 30, 0, TAU); c.stroke(); c.setLineDash([]);
+  }
+  drawBridges(c, k, mini);
+  if (!mini) drawVents(c, k);
+  for (const b of BUILDINGS) drawBuilding(c, b, k, mini);
+  // Spawn pads
+  TSPAWN.forEach((s, i) => {
+    c.fillStyle = alpha(TEAMS[i].color, .1); c.beginPath(); c.arc(s.x, s.y, 70, 0, TAU); c.fill();
+    if (!mini) { c.strokeStyle = alpha(TEAMS[i].color, .35); c.lineWidth = 2; c.setLineDash([6, 8]); c.stroke(); c.setLineDash([]); }
+  });
+  c.strokeStyle = foundry ? '#3a2f26' : '#2c3845'; c.lineWidth = 3 / k; c.strokeRect(0, 0, W, H);
+  if (!mini) {
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.font = '900 64px "Segoe UI",system-ui,sans-serif'; c.fillStyle = foundry ? 'rgba(255,170,90,.05)' : 'rgba(255,255,255,.045)';
+    for (const d of DISTRICTS) c.fillText(d.label, d.lx, d.ly);
+  }
+}
+
+function drawOverheads(c, k) {
+  const now = performance.now();
+  // Crane jib swings slowly over the construction site (drawn above players for depth)
+  const b = BUILDINGS.find(b => b.kind === 'crane');
+  if (b) {
+    const ox = b.x + b.w / 2, oy = b.y + b.h / 2, a = 2.6 + Math.sin(time * .08) * .5;
+    c.save(); c.globalAlpha = .55;
+    c.strokeStyle = '#ffcc33'; c.lineWidth = 10; c.beginPath();
+    c.moveTo(ox - Math.cos(a) * 70, oy - Math.sin(a) * 70); c.lineTo(ox + Math.cos(a) * 330, oy + Math.sin(a) * 330); c.stroke();
+    c.strokeStyle = '#7a5f00'; c.lineWidth = 2; c.setLineDash([6, 6]); c.stroke(); c.setLineDash([]);
+    c.fillStyle = '#555'; c.fillRect(ox - Math.cos(a) * 70 - 14, oy - Math.sin(a) * 70 - 14, 28, 28);
+    c.restore();
+  }
+  // Furnace smoke drifting over the foundry
+  for (const f of BUILDINGS) if (f.kind === 'furnace') for (let i = 0; i < 4; i++) {
+    const t = ((now / 4000) + i / 4 + f.seed * .13) % 1;
+    c.fillStyle = `rgba(60,55,50,${.35 * (1 - t)})`;
+    c.beginPath(); c.arc(f.x + f.w * .7 + t * 60, f.y + 20 - t * 90, 14 + t * 30, 0, TAU); c.fill();
+  }
+}
+
+function draw() {
+  const k = viewScale(), now = performance.now();
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = '#0b0f14'; ctx.fillRect(0, 0, cw, ch);
+  ctx.setTransform(dpr * k, 0, 0, dpr * k, dpr * (cw / 2 - cam.x * k), dpr * (ch / 2 - cam.y * k));
+  drawMap(ctx, k, false);
+  const font = px => `600 ${px / k}px "Segoe UI",system-ui,sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+
+  // Vaults
+  VAULTS.forEach((v, i) => {
+    const slot = slots.find(s => s.vault === i && !s.station);
+    const open = slot && slot.box && !slot.box.carrier && slot.box.x === v.x && slot.box.y === v.y;
+    const soon = slot && !isLive(slot);
+    ctx.fillStyle = open ? '#2b2140' : '#171d25'; ctx.strokeStyle = open ? '#b48cff' : soon ? '#7a62a8' : '#3a4654'; ctx.lineWidth = 3 / k;
+    ctx.fillRect(v.x - 26, v.y - 26, 52, 52); ctx.strokeRect(v.x - 26, v.y - 26, 52, 52);
+    ctx.beginPath(); ctx.arc(v.x, v.y, 12, 0, TAU); ctx.stroke();
+    if (soon) {
+      ctx.strokeStyle = '#b48cff'; ctx.lineWidth = 5; ctx.beginPath();
+      ctx.arc(v.x, v.y, 40, -Math.PI / 2, -Math.PI / 2 + TAU * Math.max(0, 1 - slot.timer / 10)); ctx.stroke();
+    }
+    ctx.fillStyle = open || soon ? '#cdb8ff' : '#6f7c8a'; ctx.font = font(10);
+    ctx.fillText((v.name + ' vault').toUpperCase() + (soon ? ' · ' + Math.ceil(slot.timer) + 's' : ''), v.x, v.y + 42);
+  });
+  // Cashout stations
+  STATIONS.forEach((st, i) => {
+    const slot = slots.find(s => s.station && s.station.idx === i), act = slot && slot.station;
+    const dest = slots.some(s => s.box && s.box.carrier && s.box.dest === i);
+    if (act) {
+      const col = TEAMS[act.team].color;
+      ctx.fillStyle = alpha(col, .14 + (act.contest ? .06 * Math.sin(now / 120) : 0)); ctx.beginPath(); ctx.arc(st.x, st.y, STATION_R, 0, TAU); ctx.fill();
+      ctx.strokeStyle = col; ctx.lineWidth = 7; ctx.beginPath();
+      ctx.arc(st.x, st.y, STATION_R - 4, -Math.PI / 2, -Math.PI / 2 + TAU * act.progress); ctx.stroke();
+      if (act.stealTeam >= 0) {
+        ctx.strokeStyle = TEAMS[act.stealTeam].color; ctx.lineWidth = 4; ctx.beginPath();
+        ctx.arc(st.x, st.y, STATION_R + 9, -Math.PI / 2, -Math.PI / 2 + TAU * act.steal); ctx.stroke();
+      }
+    }
+    ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(st.x - 12, st.y - 12, 24, 24);
+    ctx.setLineDash([10 / k, 7 / k]);
+    ctx.strokeStyle = act ? alpha(TEAMS[act.team].color, .6) : dest ? '#ffcc33' : '#3e4b59';
+    ctx.lineWidth = (dest ? 3 : 1.5) / k;
+    ctx.beginPath(); ctx.arc(st.x, st.y, STATION_R, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = act ? '#fff' : dest ? '#ffcc33' : '#7d8a98'; ctx.font = font(act ? 15 : 11);
+    ctx.fillText(act ? Math.floor(act.progress * 100) + '%' : 'CASHOUT', st.x, st.y);
+    ctx.font = font(10); ctx.fillStyle = act ? alpha(TEAMS[act.team].color, .9) : '#6f7c8a';
+    ctx.fillText(act ? `${TEAMS[act.team].name.toUpperCase()} · +${money(act.value)}` : st.name.toUpperCase(), st.x, st.y + STATION_R + 14);
+  });
+  // Gas clouds
+  for (const c of clouds) {
+    const fade = Math.min(1, c.left / 1.2, (GADGETS.gas.dur - c.left) / .4 + .2);
+    const gr = ctx.createRadialGradient(c.x, c.y, 10, c.x, c.y, c.r);
+    gr.addColorStop(0, `rgba(150,230,60,${.55 * fade})`); gr.addColorStop(1, `rgba(110,200,40,${.24 * fade})`);
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(c.x, c.y, c.r, 0, TAU); ctx.fill();
+    for (let i = 0; i < 7; i++) {
+      const a = i / 7 * TAU + time * .4 * (i % 2 ? 1 : -1), rr = c.r * (.35 + .3 * ((i * 37) % 10) / 10);
+      ctx.fillStyle = `rgba(170,240,90,${.22 * fade})`; ctx.beginPath(); ctx.arc(c.x + Math.cos(a) * rr, c.y + Math.sin(a) * rr, c.r * .32, 0, TAU); ctx.fill();
+    }
+    ctx.strokeStyle = `rgba(180,255,90,${.6 * fade})`; ctx.lineWidth = 2 / k; ctx.setLineDash([5 / k, 5 / k]);
+    ctx.beginPath(); ctx.arc(c.x, c.y, c.r, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = '#d6ff9a'; ctx.font = font(10); ctx.fillText('GAS ' + Math.ceil(c.left) + 's', c.x, c.y - c.r - 8);
+  }
+  // Gateways
+  for (const g of gates) {
+    const col = TEAMS[g.team].color, fade = Math.min(1, g.left / .8);
+    ctx.globalAlpha = fade;
+    ctx.strokeStyle = alpha(col, .25); ctx.lineWidth = 2 / k; ctx.setLineDash([3 / k, 9 / k]); ctx.lineDashOffset = -now / 40;
+    ctx.beginPath(); ctx.moveTo(g.a.x, g.a.y); ctx.lineTo(g.b.x, g.b.y); ctx.stroke(); ctx.setLineDash([]); ctx.lineDashOffset = 0;
+    for (const e of [g.a, g.b]) {
+      const gr = ctx.createRadialGradient(e.x, e.y, 2, e.x, e.y, 26);
+      gr.addColorStop(0, '#ffffffcc'); gr.addColorStop(.45, alpha(col, .55)); gr.addColorStop(1, alpha(col, 0));
+      ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(e.x, e.y, 26, 0, TAU); ctx.fill();
+      ctx.strokeStyle = col; ctx.lineWidth = 3;
+      for (let i = 0; i < 3; i++) { const a = now / 300 + i * TAU / 3; ctx.beginPath(); ctx.arc(e.x, e.y, 20, a, a + 1.2); ctx.stroke(); }
+    }
+    ctx.fillStyle = col; ctx.font = font(9); ctx.fillText('GATEWAY ' + Math.ceil(g.left) + 's', g.b.x, g.b.y - 34);
+    ctx.globalAlpha = 1;
+  }
+  // Tracers (real-time fade so they read at any speed)
+  shots = shots.filter(s => now - s.born < 140);
+  for (const s of shots) {
+    const f = 1 - (now - s.born) / 140;
+    ctx.lineWidth = (s.w === 'DMR' ? 3.2 : s.w === 'SG' ? 1.2 : 1.8) / k;
+    ctx.strokeStyle = s.w === 'DMR' ? `rgba(255,255,255,${.9 * f})` : alpha(s.c, .85 * f);
+    ctx.beginPath(); ctx.moveTo(s.x1, s.y1); ctx.lineTo(s.x2, s.y2); ctx.stroke();
+    if (s.w === 'DMR') { ctx.lineWidth = 1.4 / k; ctx.strokeStyle = alpha(s.c, f); ctx.stroke(); }
+  }
+  // Players
+  for (const p of players) {
+    const col = TEAMS[p.team].color;
+    if (!p.alive && p.statue) { // revivable statue
+      const x = p.deathX, y = p.deathY, rr = p.carriedBy ? 7 : 10;
+      ctx.fillStyle = '#9aa3ad'; ctx.strokeStyle = col; ctx.lineWidth = 2.5 / k;
+      ctx.beginPath(); ctx.arc(x, y, rr, 0, TAU); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = alpha(col, .8); ctx.beginPath(); ctx.arc(x, y, rr * .45, 0, TAU); ctx.fill();
+      if (p.reviveProg > 0) {
+        ctx.strokeStyle = '#7be38f'; ctx.lineWidth = 3.5; ctx.beginPath();
+        ctx.arc(x, y, rr + 6, -Math.PI / 2, -Math.PI / 2 + TAU * p.reviveProg); ctx.stroke();
+      }
+      ctx.fillStyle = alpha(col, .85); ctx.font = font(9);
+      ctx.fillText(p.reviveProg > 0 ? 'REVIVING' : p.carriedBy ? '' : Math.ceil(p.respawn) + 's', x, y + rr + 10);
+      continue;
+    }
+    if (!p.alive) {
+      ctx.strokeStyle = alpha(col, .5); ctx.lineWidth = 2 / k; const x = p.deathX, y = p.deathY;
+      ctx.beginPath(); ctx.moveTo(x - 6, y - 6); ctx.lineTo(x + 6, y + 6); ctx.moveTo(x + 6, y - 6); ctx.lineTo(x - 6, y + 6); ctx.stroke();
+      ctx.fillStyle = alpha(col, .7); ctx.font = font(10); ctx.fillText(Math.ceil(p.respawn) + 's', x, y + 16);
+      continue;
+    }
+    if (p.gasTime > .1) { ctx.strokeStyle = '#b4ff5a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x, p.y, 14, 0, TAU); ctx.stroke(); }
+    if (p.carrying) { ctx.fillStyle = '#7be38f'; ctx.font = font(9); ctx.fillText('CARRYING ' + p.carrying.name.toUpperCase(), p.x, p.y - 29); }
+    if (p.flee > 0) { ctx.fillStyle = '#9fe0ff'; ctx.font = font(9); ctx.fillText('RETREATING', p.x, p.y - 29); }
+    if (carriedSlot(p)) { ctx.fillStyle = 'rgba(255,204,51,.25)'; ctx.beginPath(); ctx.arc(p.x, p.y, 21, 0, TAU); ctx.fill(); }
+    ctx.fillStyle = col; ctx.strokeStyle = '#0b0f14'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(p.x, p.y, 10, 0, TAU); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = '#0b0f14'; ctx.lineWidth = 2.5; ctx.beginPath();
+    ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + Math.cos(p.ang) * 10, p.y + Math.sin(p.ang) * 10); ctx.stroke();
+    ctx.fillStyle = '#000a'; ctx.fillRect(p.x - 13, p.y - 21, 26, 4);
+    ctx.fillStyle = p.hp > 50 ? '#7be38f' : p.hp > 25 ? '#ffc94a' : '#ff5a5a';
+    ctx.fillRect(p.x - 13, p.y - 21, 26 * p.hp / 100, 4);
+    ctx.fillStyle = '#0b0f14'; ctx.font = `800 ${p.weapon === 'DMR' ? 6 : 7}px "Segoe UI",system-ui,sans-serif`;
+    ctx.fillText(WEAPONS[p.weapon].tag, p.x, p.y + .5);
+    if (k > .75) { ctx.fillStyle = alpha('#ffffff', .8); ctx.font = font(10); ctx.fillText(p.name, p.x, p.y + 20); }
+  }
+  // Cash boxes
+  for (const s of slots) if (s.box) {
+    const b = s.box, bx = b.x, by = b.carrier ? b.y - 32 : b.y, pulse = 1 + .12 * Math.sin(now / 160);
+    ctx.save(); ctx.translate(bx, by); ctx.rotate(Math.PI / 4); ctx.scale(pulse, pulse);
+    ctx.shadowColor = '#ffcc33'; ctx.shadowBlur = 12;
+    ctx.fillStyle = '#ffcc33'; ctx.strokeStyle = '#5a4300'; ctx.lineWidth = 2;
+    ctx.fillRect(-8, -8, 16, 16); ctx.strokeRect(-8, -8, 16, 16); ctx.restore();
+    ctx.fillStyle = '#ffcc33'; ctx.font = font(11); ctx.fillText(money(b.value), bx, by - 18);
+  }
+  // Wiped squads: countdown on their spawn pad
+  TSPAWN.forEach((sp, t) => {
+    if (!stats[t].wiped) return;
+    const left = Math.ceil(players.find(p => p.team === t).respawn);
+    ctx.strokeStyle = TEAMS[t].color; ctx.lineWidth = 6; ctx.beginPath();
+    ctx.arc(sp.x, sp.y, 62, -Math.PI / 2, -Math.PI / 2 + TAU * (1 - left / WIPE_RESPAWN)); ctx.stroke();
+    ctx.fillStyle = '#ff6b6b'; ctx.font = font(13); ctx.fillText('WIPED', sp.x, sp.y - 9);
+    ctx.fillStyle = '#fff'; ctx.font = font(18); ctx.fillText(left + 's', sp.x, sp.y + 11);
+  });
+  // Grenades in flight (with a little arc) + explosions / warps
+  for (const pr of projectiles) {
+    const t = Math.min(1, pr.t / pr.fuse), x = pr.x0 + (pr.x1 - pr.x0) * t, y = pr.y0 + (pr.y1 - pr.y0) * t, h = Math.sin(t * Math.PI) * 45;
+    ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.arc(x, y, 5, 0, TAU); ctx.fill();
+    ctx.fillStyle = pr.kind === 'frag' ? (Math.floor(now / 90) % 2 ? '#ff4040' : '#2a2a2a') : '#9be04a';
+    ctx.strokeStyle = '#0b0f14'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y - h, 5.5, 0, TAU); ctx.fill(); ctx.stroke();
+  }
+  fx = fx.filter(f => now - f.born < (f.kind === 'blast' ? 450 : 300));
+  for (const f of fx) {
+    const t = Math.max(0, (now - f.born) / (f.kind === 'blast' ? 450 : 300));
+    if (f.kind === 'blast') {
+      ctx.fillStyle = `rgba(255,170,60,${.45 * (1 - t)})`; ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (.4 + .6 * t), 0, TAU); ctx.fill();
+      ctx.strokeStyle = `rgba(255,230,160,${1 - t})`; ctx.lineWidth = 4 / k; ctx.beginPath(); ctx.arc(f.x, f.y, f.r * t, 0, TAU); ctx.stroke();
+    } else {
+      ctx.strokeStyle = alpha(f.c, 1 - t); ctx.lineWidth = 3 / k; ctx.beginPath(); ctx.arc(f.x, f.y, 8 + 22 * t, 0, TAU); ctx.stroke();
+    }
+  }
+  drawOverheads(ctx, k);
+  // Objective number tags
+  slots.forEach((s, i) => {
+    if (s.idle) return;
+    const pt = slotPoint(s), y = pt.y - (s.station ? STATION_R + 24 : 58);
+    ctx.fillStyle = '#ffcc33'; ctx.beginPath(); ctx.arc(pt.x, y, 11 / k, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#111'; ctx.font = `800 ${12 / k}px "Segoe UI",system-ui,sans-serif`; ctx.fillText(i + 1, pt.x, y + .5 / k);
+  });
+  if (paused && !over) {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(0, 0, cw, ch);
+    ctx.fillStyle = '#fff'; ctx.font = '800 34px "Segoe UI",system-ui,sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('PAUSED', cw / 2, ch / 2);
+  }
+}
+
+function buildMinimapStatic() {
+  mmStatic = document.createElement('canvas');
+  mmStatic.width = mm.width; mmStatic.height = mm.height;
+  const c = mmStatic.getContext('2d'), k = mmScale();
+  c.fillStyle = '#0b0f14'; c.fillRect(0, 0, mm.width, mm.height);
+  c.setTransform(dpr * k, 0, 0, dpr * k, dpr * (MMW - W * k) / 2, dpr * (MMH - H * k) / 2);
+  drawMap(c, k, true);
+}
+function drawMinimap() {
+  const k = mmScale();
+  mctx.setTransform(1, 0, 0, 1, 0, 0);
+  mctx.drawImage(mmStatic, 0, 0);
+  mctx.setTransform(dpr * k, 0, 0, dpr * k, dpr * (MMW - W * k) / 2, dpr * (MMH - H * k) / 2);
+  STATIONS.forEach((s, i) => {
+    const act = slots.find(o => o.station && o.station.idx === i);
+    mctx.strokeStyle = act ? TEAMS[act.station.team].color : '#4a5866'; mctx.lineWidth = (act ? 2.5 : 1) / k;
+    mctx.beginPath(); mctx.arc(s.x, s.y, STATION_R, 0, TAU); mctx.stroke();
+  });
+  for (const s of slots) if (!isLive(s) && s.vault >= 0) {
+    const v = VAULTS[s.vault]; mctx.strokeStyle = '#b48cff'; mctx.lineWidth = 2 / k; mctx.strokeRect(v.x - 30, v.y - 30, 60, 60);
+  }
+  for (const p of players) if (p.alive) {
+    mctx.fillStyle = TEAMS[p.team].color; mctx.beginPath(); mctx.arc(p.x, p.y, 3.2 / k, 0, TAU); mctx.fill();
+  }
+  for (const c of clouds) { mctx.fillStyle = 'rgba(160,240,70,.45)'; mctx.beginPath(); mctx.arc(c.x, c.y, c.r, 0, TAU); mctx.fill(); }
+  for (const g of gates) {
+    mctx.strokeStyle = TEAMS[g.team].color; mctx.lineWidth = 1.5 / k; mctx.setLineDash([4 / k, 4 / k]);
+    mctx.beginPath(); mctx.moveTo(g.a.x, g.a.y); mctx.lineTo(g.b.x, g.b.y); mctx.stroke(); mctx.setLineDash([]);
+  }
+  for (const s of slots) if (s.box) { mctx.fillStyle = '#ffcc33'; mctx.fillRect(s.box.x - 5 / k, s.box.y - 5 / k, 10 / k, 10 / k); }
+  const a = toWorld(0, 0), b = toWorld(cw, ch);
+  mctx.strokeStyle = 'rgba(255,255,255,.75)'; mctx.lineWidth = 1.2 / k;
+  mctx.strokeRect(a.x, a.y, b.x - a.x, b.y - a.y);
+}
+
+/* ================= HUD ================= */
+const sbRows = $('sbRows');
+let lastSB = '', hudTimer = 0;
+function slotStatus(s) {
+  if (over) return [s.i === 0 ? 'Match complete' : '', ''];
+  if (s.idle) return ['Closed — final cashout elsewhere', ''];
+  if (s.station) {
+    const st = s.station, steal = st.stealTeam >= 0 ? ` · ${TEAMS[st.stealTeam].name} stealing ${Math.floor(st.steal * 100)}%` : st.contest ? ' · contested' : '';
+    return [`${st.name}: ${TEAMS[st.team].name} cashing ${money(st.value)} · ${Math.floor(st.progress * 100)}%${steal}`, TEAMS[st.team].color];
+  }
+  if (s.box) return s.box.carrier
+    ? [`${s.box.carrier.name} carrying ${money(s.box.value)} → ${STATIONS[s.box.dest].name}`, '#ffcc33']
+    : [`${money(s.box.value)} loose at ${VAULTS[s.vault].name}`, '#ffcc33'];
+  return [`${VAULTS[s.vault].name} vault opens in ${Math.max(0, Math.ceil(s.timer))}s`, '#b48cff'];
+}
+function updateHud(force) {
+  $('clock').textContent = fmt(time);
+  $('cc').textContent = totalCashouts;
+  $('obj1').style.display = slots.length > 1 ? '' : 'none';
+  slots.forEach((s, i) => {
+    const [txt, col] = slotStatus(s), el = $('obj' + i);
+    el.innerHTML = '';
+    const tag = document.createElement('i'); tag.textContent = i + 1; tag.style.background = s.idle ? '' : '#ffcc33';
+    const span = document.createElement('span'); span.textContent = txt; span.style.color = col;
+    el.append(tag, span);
+  });
+  renderScoreboard(force);
+}
+// Leaderboard ranks by projected cash: banked cash + any cashout the team currently owns
+const pendingCash = i => slots.reduce((a, o) => a + (o.station && o.station.team === i ? o.station.value : 0), 0);
+const projectedCash = i => stats[i].cash + pendingCash(i);
+const sbEls = new Map();
+let sbOrder = [];
+function scoreRowHTML(i, rank) {
+  const s = stats[i];
+  const pips = players.filter(p => p.team === i)
+    .map(p => `<i class="pip${p.alive ? '' : p.statue ? ' down' : ' dead'}${carriedSlot(p) ? ' carry' : ''}"></i>`).join('');
+  const roster = players.filter(p => p.team === i)
+    .map(p => `<span class="pl${p.alive ? '' : ' dead'}"><b>${WEAPONS[p.weapon].tag}</b>${p.name}<span class="gd">` +
+      `<i class="${p.gcd[p.gadget] <= 0 ? 'on' : ''}" title="${GADGETS[p.gadget].name}">${GADGETS[p.gadget].key}</i></span></span>`).join('');
+  const tgt = slots[teamTarget[i]];
+  const owned = slots.filter(o => o.station && o.station.team === i)
+    .map(o => `<span class="pend">+${money(o.station.value)} · ${Math.floor(o.station.progress * 100)}%</span>`).join('');
+  const pend = pendingCash(i);
+  return `<div class="rank">${rank + 1}</div>` +
+    `<div><div class="tn">${TEAMS[i].name}<span class="pips">${pips}</span></div>` +
+    `<div class="roster">${roster}</div>` +
+    `<div class="ts">K ${s.kills} · D ${s.deaths} · Rev ${s.revives} · Cashouts ${s.cashouts}</div>` +
+    `<div class="tgt">→ ${tgt ? `[${tgt.i + 1}] ` + slotLabel(tgt) : '—'}</div></div>` +
+    `<div class="cash">${money(s.cash)}${pend ? `<div class="proj">proj. ${money(s.cash + pend)}</div>` : ''}` +
+    `${RULES.winCash ? `<div class="goal">of ${money(RULES.winCash)}</div>` : ''}${owned}` +
+    `${s.wiped ? `<span class="wipe">WIPED · ${Math.ceil(players.find(p => p.team === i).respawn)}s</span>` : ''}</div>`;
+}
+function renderScoreboard(force) {
+  const order = TEAMS.map((_, i) => i).sort((a, b) =>
+    projectedCash(b) - projectedCash(a) || stats[b].cash - stats[a].cash || stats[b].kills - stats[a].kills || a - b);
+  // FLIP: remember where each row was
+  const before = new Map();
+  for (const [i, el] of sbEls) before.set(i, el.getBoundingClientRect().top);
+  order.forEach((i, rank) => {
+    let el = sbEls.get(i);
+    if (!el) { el = document.createElement('div'); el.className = 'team'; el.style.setProperty('--c', TEAMS[i].color); sbEls.set(i, el); sbRows.append(el); }
+    const html = scoreRowHTML(i, rank);
+    if (force || el._html !== html) { el.innerHTML = html; el._html = html; }
+  });
+  const changed = order.some((i, k) => sbOrder[k] !== i);
+  if (changed) {
+    const prevRank = new Map(sbOrder.map((i, k) => [i, k]));
+    order.forEach(i => sbRows.append(sbEls.get(i)));
+    order.forEach((i, rank) => {
+      const el = sbEls.get(i), old = before.get(i);
+      if (old !== undefined) {
+        const delta = old - el.getBoundingClientRect().top;
+        if (delta) {
+          el.style.transition = 'none'; el.style.transform = `translateY(${delta}px)`;
+          el.offsetHeight; // reflow
+          el.style.transition = 'transform .55s cubic-bezier(.2,.8,.2,1)'; el.style.transform = '';
+        }
+      }
+      if (prevRank.has(i) && prevRank.get(i) !== rank) {
+        const cls = rank < prevRank.get(i) ? 'rank-up' : 'rank-down';
+        el.classList.remove('rank-up', 'rank-down'); el.offsetHeight; el.classList.add(cls);
+        clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove(cls), 1600);
+      }
+    });
+    sbOrder = order;
+  }
+}
+
+/* ================= Controls ================= */
+const speedBtns = $('speedBtns');
+SPEEDS.forEach((s, i) => {
+  const b = document.createElement('button');
+  b.textContent = s + 'x'; b.dataset.speed = s; b.title = `Speed ${s}x (${i + 1})`;
+  b.addEventListener('click', () => setSpeed(s));
+  speedBtns.append(b);
+});
+function setSpeed(s) { speed = s; for (const b of speedBtns.children) b.classList.toggle('active', +b.dataset.speed === s); }
+function togglePause() {
+  paused = !paused;
+  const b = $('pauseBtn');
+  b.textContent = paused ? '▶ Resume' : '❚❚ Pause';
+  b.classList.toggle('active', paused);
+}
+function cycleFocus() { // auto → objective 1 → objective 2 → auto
+  if (!cam.auto || cam.lock === null) setAuto(true, 0);
+  else if (cam.lock === 0 && slots.length > 1) setAuto(true, 1);
+  else setAuto(true, null);
+}
+$('pauseBtn').addEventListener('click', togglePause);
+function toggleMinimal() {
+  const on = document.body.classList.toggle('minimal');
+  $('minBtn').textContent = on ? '◳ Full UI' : '◱ Minimal UI';
+  try { localStorage.setItem('finalsMinimal', on ? '1' : ''); } catch (e) {}
+}
+$('minBtn').addEventListener('click', toggleMinimal);
+try { if (localStorage.getItem('finalsMinimal')) toggleMinimal(); } catch (e) {}
+$('camBtn').addEventListener('click', () => setAuto(!cam.auto));
+$('bracketBtn').addEventListener('click', () => toggleBracket());
+$('killToggle').addEventListener('click', e => {
+  const hide = entries.classList.toggle('nokills');
+  e.currentTarget.textContent = hide ? 'Show kills' : 'Hide kills';
+  e.currentTarget.classList.toggle('active', hide);
+});
+addEventListener('keydown', e => {
+  if (e.target.closest('input,textarea,select')) return;
+  if (e.code === 'Space') { e.preventDefault(); togglePause(); }
+  else if (e.key >= '1' && e.key <= String(SPEEDS.length)) setSpeed(SPEEDS[+e.key - 1]);
+  else if (e.key === 'c' || e.key === 'C') setAuto(!cam.auto);
+  else if (e.key === 'f' || e.key === 'F') cycleFocus();
+  else if (e.key === 'b' || e.key === 'B') toggleBracket();
+  else if (e.key === 'h' || e.key === 'H') toggleMinimal();
+});
+addEventListener('resize', resize);
+
+/* ================= Tournament ================= */
+let TOUR = null;
+const INTERMISSION = 12; // seconds before the next match starts automatically
+function newTournament() {
+  const names = NAME_POOL.slice().sort(() => Math.random() - .5);
+  ALL_TEAMS.forEach(t => { t.roster = [names.pop(), names.pop(), names.pop()]; });
+  const order = ALL_TEAMS.map(t => t.id).sort(() => Math.random() - .5);
+  const ids = Object.keys(MAPS);
+  TOUR = {
+    maps: [0, 1, 2].map(() => ids[randInt(ids.length)]), // one random map per round
+    stages: [
+      { label: 'Round 1 · Group A', round: 0, teams: order.slice(0, 4), rules: GROUP_RULES },
+      { label: 'Round 1 · Group B', round: 0, teams: order.slice(4), rules: GROUP_RULES },
+      { label: 'Round 2', round: 1, teams: null, rules: GROUP_RULES },
+      { label: 'Final', round: 2, teams: null, rules: FINAL_RULES },
+    ],
+    idx: 0, champion: -1, inter: 0,
+  };
+  startStage(0);
+}
+function startStage(i) {
+  TOUR.idx = i;
+  const st = TOUR.stages[i];
+  if (i === 2) st.teams = [...TOUR.stages[0].advanced, ...TOUR.stages[1].advanced];
+  if (i === 3) st.teams = TOUR.stages[2].advanced.slice();
+  TEAMS = st.teams.map(id => ALL_TEAMS[id]);
+  RULES = st.rules;
+  loadMap(TOUR.maps[st.round]);
+  reset();
+  buildMinimapStatic();
+  $('ccMax').textContent = RULES.target;
+  $('stageLbl').textContent = st.label;
+  $('stageMap').textContent = MAP.name;
+  cam.x = W / 2; cam.y = H / 2; cam.focus = 0; cam.lock = null;
+  TOUR.inter = 0;
+  $('bracket').classList.remove('show');
+  updateHud(true);
+}
+function tournamentMatchOver(order) {
+  const st = TOUR.stages[TOUR.idx];
+  st.results = order.map(i => ({ id: TEAMS[i].id, cash: stats[i].cash, cashouts: stats[i].cashouts, kills: stats[i].kills }));
+  st.advanced = st.results.slice(0, st.rules.advance).map(r => r.id);
+  if (TOUR.idx === 3) {
+    TOUR.champion = st.advanced[0];
+    addLog(['🏆 ', T(order[0]), ' are the TOURNAMENT CHAMPIONS!'], 'major');
+  } else {
+    addLog([...st.advanced.map(id => ({ t: ALL_TEAMS[id].name, c: ALL_TEAMS[id].color })).flatMap((x, k) => k ? [' & ', x] : [x]),
+      ` advance to ${TOUR.stages[TOUR.idx + 1].label}`], 'major');
+  }
+  TOUR.inter = TOUR.idx === 3 ? -1 : INTERMISSION;
+  showBracket(true);
+}
+function nextStage() { if (TOUR.idx < 3) startStage(TOUR.idx + 1); else newTournament(); }
+function toggleBracket() {
+  const el = $('bracket');
+  if (el.classList.contains('show') && !over) el.classList.remove('show'); else showBracket(over);
+}
+function teamRow(res, st, k) {
+  const t = ALL_TEAMS[res.id], done = !!st.advanced, adv = done && st.advanced.includes(res.id);
+  const score = st.rules.winCash ? `${res.cashouts} cashout${res.cashouts === 1 ? '' : 's'} · ${money(res.cash)}` : money(res.cash);
+  return `<div class="brow${adv ? ' adv' : done ? ' out' : ''}" style="--c:${t.color}"><span class="sw"></span><span class="nm">${t.name}</span>` +
+    `<span class="cs">${res.cash !== undefined ? score : ''}</span><span class="ok">${adv ? (TOUR.stages.indexOf(st) === 3 ? '🏆' : '✓') : ''}</span></div>`;
+}
+function stageBox(si, title) {
+  const st = TOUR.stages[si], live = si === TOUR.idx && !over;
+  let rows;
+  if (st.results) rows = st.results.map((r, k) => teamRow(r, st, k)).join('');
+  else if (live) rows = standings().map(i => teamRow({ id: TEAMS[i].id, cash: stats[i].cash, cashouts: stats[i].cashouts }, st)).join('');
+  else if (st.teams || si < 2) rows = (st.teams || []).map(id => teamRow({ id }, st)).join('');
+  else rows = Array(si === 3 ? 2 : 4).fill(0).map(() => `<div class="brow tbd"><span class="sw" style="background:#333"></span><span class="nm">TBD</span><span></span><span></span></div>`).join('');
+  const status = st.results ? 'Done' : live ? '● Live' : 'Upcoming';
+  return `<div class="grp${live ? ' live' : ''}"><div class="gt">${title}<b>${status}</b></div>${rows}</div>`;
+}
+function showBracket(between) {
+  const el = $('bracket'), st = TOUR.stages[TOUR.idx];
+  const mapName = r => MAPS[TOUR.maps[r]].name;
+  let head;
+  if (TOUR.champion >= 0) {
+    const c = ALL_TEAMS[TOUR.champion];
+    head = `<div class="kick">Tournament complete</div><div class="big" style="color:${c.color}">🏆 ${c.name} win the tournament!</div>`;
+  } else if (between) {
+    const nx = TOUR.stages[TOUR.idx + 1];
+    head = `<div class="kick">${st.label} complete</div><div class="big">Up next: ${nx.label}</div>`;
+  } else head = `<div class="kick">Tournament bracket</div><div class="big">${st.label} — live</div>`;
+  $('bkHead').innerHTML = head;
+  const champ = TOUR.champion >= 0 ? ALL_TEAMS[TOUR.champion] : null;
+  $('bkCols').innerHTML =
+    `<div class="bcol"><h4>Round 1</h4><div class="mapn">${mapName(0)} · top 2 advance</div>${stageBox(0, 'Group A')}${stageBox(1, 'Group B')}</div>` +
+    `<div class="bcol"><h4>Round 2</h4><div class="mapn">${mapName(1)} · top 2 advance</div>${stageBox(2, 'Group')}</div>` +
+    `<div class="bcol"><h4>Final</h4><div class="mapn">${mapName(2)} · $25k cashouts · first to $50k</div>${stageBox(3, 'Final')}</div>` +
+    `<div class="bcol"><h4>Champion</h4><div class="champ">${champ ? `<div class="cup">🏆</div><div class="cn" style="color:${champ.color}">${champ.name}</div><div class="goal">${champ.roster.join(' · ')}</div>`
+      : '<div class="cup" style="opacity:.25">🏆</div><div class="goal">To be decided</div>'}</div></div>`;
+  const foot = $('bkFoot');
+  if (TOUR.champion >= 0) foot.innerHTML = `<button class="primary" id="bkNext">New tournament</button>`;
+  else if (between) foot.innerHTML = `<span class="cd" id="bkCd"></span><button class="primary" id="bkNext">Start ${TOUR.stages[TOUR.idx + 1].label} ▶</button>`;
+  else foot.innerHTML = `<button id="bkClose">Close</button>`;
+  const nb = $('bkNext'); if (nb) nb.onclick = nextStage;
+  const cb = $('bkClose'); if (cb) cb.onclick = () => el.classList.remove('show');
+  el.classList.add('show');
+}
+
+/* ================= Main loop ================= */
+loadMap('canal'); resize(); setSpeed(1); newTournament();
+let last = performance.now();
+function frame(now) {
+  const real = Math.min((now - last) / 1000, .1); last = now;
+  if (!paused && !over) {
+    const sim = real * speed, n = Math.max(1, Math.ceil(sim / (1 / 60))), h = sim / n;
+    for (let i = 0; i < n && !over; i++) step(h);
+  }
+  updateCamera(real);
+  draw(); drawMinimap();
+  if (TOUR && over && TOUR.inter > 0 && !paused) { // intermission countdown
+    TOUR.inter -= real;
+    const cd = $('bkCd'); if (cd) cd.textContent = `Next match in ${Math.ceil(TOUR.inter)}s`;
+    if (TOUR.inter <= 0) nextStage();
+  }
+  hudTimer -= real;
+  if (hudTimer <= 0) { hudTimer = .1; updateHud(); }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
