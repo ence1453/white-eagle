@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chaos Chess — 400 ELO Bot + 30 Modifiers</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --panel: #181c26;
+    --border: #2a3040;
+    --text: #e6eaf2;
+    --muted: #8b95a8;
+    --light-sq: #cbd5e1;
+    --dark-sq: #475569;
+    --accent: #f59e0b;
+    --danger: #ef4444;
+    --portal-a: #06b6d4;
+    --portal-b: #d946ef;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  header {
+    text-align: center;
+    margin-bottom: 16px;
+  }
+  header h1 {
+    font-size: 1.8rem;
+    letter-spacing: 0.5px;
+    color: var(--accent);
+  }
+  header p {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin-top: 4px;
+  }
+  .layout {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    max-width: 1120px;
+    width: 100%;
+  }
+  .board-wrap {
+    position: relative;
+    width: min(88vw, 520px);
+    height: min(88vw, 520px);
+    border: 4px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+    background: var(--dark-sq);
+  }
+  .board-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    width: 100%;
+    height: 100%;
+  }
+  .square {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  .square.light { background: var(--light-sq); }
+  .square.dark { background: var(--dark-sq); }
+  .square.selected { background: #fde047 !important; }
+  .square.last-move { box-shadow: inset 0 0 0 4px rgba(245, 158, 11, 0.65); }
+  .square.valid-move::after {
+    content: "";
+    width: 28%;
+    height: 28%;
+    background: rgba(16, 185, 129, 0.75);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+  .square.valid-capture::after {
+    content: "";
+    position: absolute;
+    inset: 6%;
+    border: 4px solid rgba(239, 68, 68, 0.85);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+  /* Terrain & Tile Overlays */
+  .tile-crater {
+    background: #1e1b18 !important;
+    box-shadow: inset 0 0 12px #000;
+  }
+  .tile-crater::before {
+    content: "☄️";
+    font-size: 1.5rem;
+    opacity: 0.7;
+  }
+  .tile-quicksand {
+    background: #b45309 !important;
+  }
+  .tile-quicksand::before {
+    content: "⏳";
+    position: absolute;
+    bottom: 2px;
+    right: 3px;
+    font-size: 0.75rem;
+  }
+  .tile-portal-a {
+    box-shadow: inset 0 0 14px var(--portal-a);
+    border: 2px dashed var(--portal-a);
+  }
+  .tile-portal-b {
+    box-shadow: inset 0 0 14px var(--portal-b);
+    border: 2px dashed var(--portal-b);
+  }
+  .tile-fog {
+    background: #090b10 !important;
+  }
+  .tile-fog .piece-glyph { opacity: 0 !important; }
+  .tile-mine::before {
+    content: "💣";
+    position: absolute;
+    top: 2px;
+    left: 3px;
+    font-size: 0.75rem;
+    opacity: 0.85;
+  }
+  .tile-trampoline {
+    box-shadow: inset 0 0 12px #22c55e;
+  }
+  .tile-trampoline::before {
+    content: "⏫";
+    position: absolute;
+    bottom: 2px;
+    left: 3px;
+    font-size: 0.75rem;
+  }
+  .tile-lava {
+    background: #991b1b !important;
+    box-shadow: inset 0 0 12px #f97316;
+  }
+  .tile-lava::before {
+    content: "🌋";
+    font-size: 1.35rem;
+    opacity: 0.8;
+  }
+  .tile-airstrike {
+    animation: blast 0.6s ease-out;
+  }
+  @keyframes blast {
+    0% { background: #fff; }
+    40% { background: #ef4444; }
+    100% { background: transparent; }
+  }
+
+  /* Animated Pieces Layer */
+  .pieces-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .piece {
+    position: absolute;
+    width: 12.5%;
+    height: 12.5%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(1.8rem, 5.2vw, 2.7rem);
+    transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s;
+    z-index: 5;
+  }
+  .piece.white {
+    color: #ffffff;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.85), 0 0 2px #000;
+  }
+  .piece.black {
+    color: #111827;
+    text-shadow: 0 1px 2px rgba(255,255,255,0.65);
+  }
+  .piece-glyph {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+  }
+  .piece.trapped::after {
+    content: "🕸️";
+    position: absolute;
+    font-size: 1rem;
+    bottom: 2px;
+    right: 2px;
+  }
+  .piece.buffed::before {
+    content: "⚡";
+    position: absolute;
+    font-size: 0.9rem;
+    top: 2px;
+    left: 2px;
+  }
+  .piece.shielded::before {
+    content: "🛡️";
+    position: absolute;
+    font-size: 0.9rem;
+    top: 2px;
+    right: 2px;
+  }
+
+  /* Side Panel */
+  .sidebar {
+    flex: 1;
+    min-width: 290px;
+    max-width: 390px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+  }
+  .scoreboard {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+  .score-box {
+    flex: 1;
+    background: #11141c;
+    padding: 10px;
+    border-radius: 6px;
+    text-align: center;
+    border: 1px solid var(--border);
+  }
+  .score-box h3 { font-size: 0.85rem; color: var(--muted); }
+  .hearts { font-size: 1.2rem; margin-top: 4px; letter-spacing: 2px; }
+  .chaos-meter {
+    margin-top: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9rem;
+  }
+  .badge {
+    background: var(--accent);
+    color: #000;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+  }
+  .active-mod {
+    border-left: 4px solid var(--accent);
+  }
+  .active-mod h4 { color: var(--accent); font-size: 0.95rem; margin-bottom: 4px; }
+  .active-mod p { font-size: 0.85rem; color: var(--text); line-height: 1.35; }
+  .log {
+    height: 185px;
+    overflow-y: auto;
+    font-size: 0.82rem;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .log-entry {
+    padding-bottom: 5px;
+    border-bottom: 1px solid #232836;
+    color: var(--muted);
+  }
+  .log-entry strong { color: var(--text); }
+  .log-entry.chaos { color: #fbbf24; }
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  button {
+    flex: 1;
+    min-width: 105px;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    padding: 10px;
+    border-radius: 6px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  button:hover { opacity: 0.9; }
+  button.secondary {
+    background: #2a3040;
+    color: var(--text);
+  }
+  .modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    padding: 16px;
+  }
+  .modal.open { display: flex; }
+  .modal-box {
+    background: var(--panel);
+    border: 2px solid var(--accent);
+    padding: 22px;
+    border-radius: 10px;
+    text-align: center;
+    max-width: 520px;
+    width: 100%;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .modal-box h2 { color: var(--accent); margin-bottom: 8px; }
+  .modal-box p { margin-bottom: 14px; color: var(--muted); font-size: 0.9rem; }
+  .mod-list-scroll {
+    overflow-y: auto;
+    text-align: left;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+    margin-bottom: 14px;
+    background: #11141c;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .mod-list-item {
+    border-bottom: 1px solid #232836;
+    padding-bottom: 6px;
+    font-size: 0.84rem;
+  }
+  .mod-list-item strong { color: var(--accent); display: block; margin-bottom: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚡ CHAOS CHESS (400 ELO BOT)</h1>
+  <p>Capture the enemy King 3 times to win • 30 Random Modifiers trigger every 3 turns</p>
+</header>
+
+<div class="layout">
+  <div class="board-wrap" id="boardWrap">
+    <div class="board-grid" id="boardGrid"></div>
+    <div class="pieces-layer" id="piecesLayer"></div>
+  </div>
+
+  <div class="sidebar">
+    <div class="card">
+      <div class="scoreboard">
+        <div class="score-box">
+          <h3>YOU (WHITE)</h3>
+          <div class="hearts" id="whiteHearts">❤️❤️❤️</div>
+        </div>
+        <div class="score-box">
+          <h3>BOT ~400 (BLACK)</h3>
+          <div class="hearts" id="blackHearts">❤️❤️❤️</div>
+        </div>
+      </div>
+      <div class="chaos-meter">
+        <span>Turn: <strong id="turnLabel">White</strong></span>
+        <span class="badge" id="countdownBadge">Next Chaos: 3 rounds</span>
+      </div>
+    </div>
+
+    <div class="card active-mod">
+      <h4 id="modTitle">No Active Modifier</h4>
+      <p id="modDesc">Make your opening moves. Every 3rd full turn unleashes one of 30 chaotic modifiers!</p>
+    </div>
+
+    <div class="card">
+      <h4 style="font-size:0.85rem; color:var(--muted); margin-bottom:8px;">BATTLE & CHAOS LOG</h4>
+      <div class="log" id="eventLog"></div>
+    </div>
+
+    <div class="controls">
+      <button onclick="resetGame()">New Match</button>
+      <button class="secondary" onclick="triggerRandomModifier()">Trigger Chaos</button>
+      <button class="secondary" onclick="openModIndex()">All 30 Modifiers</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="gameOverModal">
+  <div class="modal-box">
+    <h2 id="winnerTitle">Victory!</h2>
+    <p id="winnerSub">You captured the enemy King 3 times.</p>
+    <button onclick="resetGame()">Play Again</button>
+  </div>
+</div>
+
+<div class="modal" id="modIndexModal">
+  <div class="modal-box">
+    <h2>📜 All 30 Chaos Modifiers</h2>
+    <p>Every 3 full rounds, one of these 30 modifiers triggers at random.</p>
+    <div class="mod-list-scroll" id="modListContainer"></div>
+    <button onclick="closeModIndex()">Close</button>
+  </div>
+</div>
+
+<script>
+const GLYPHS = {
+  w: { K: '♔', Q: '♕', R: '♖', B: '♗', N: '♘', P: '♙' },
+  b: { K: '♚', Q: '♛', R: '♜', B: '♝', N: '♞', P: '♟' }
+};
+
+// Custom SVG Crest Shield + Crown model for the Royal Guard ('G')
+function getPieceVisualHTML(piece) {
+  if (piece.type === 'G') {
+    const isWhite = piece.color === 'w';
+    const fill = isWhite ? '#f8fafc' : '#1e293b';
+    const stroke = isWhite ? '#0f172a' : '#f59e0b';
+    const accent = isWhite ? '#f59e0b' : '#38bdf8';
+    return `<svg viewBox="0 0 64 64" width="76%" height="76%" style="filter: drop-shadow(0 2px 3px rgba(0,0,0,0.75));">
+      <path d="M14 14 L50 14 L48 36 C48 48 32 58 32 58 C32 58 16 48 16 36 Z" fill="${fill}" stroke="${stroke}" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M21 24 L26 30 L32 22 L38 30 L43 24 L41 35 L23 35 Z" fill="${accent}" stroke="${stroke}" stroke-width="2" stroke-linejoin="round"/>
+      <line x1="32" y1="38" x2="32" y2="50" stroke="${accent}" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="26" y1="44" x2="38" y2="44" stroke="${accent}" stroke-width="3.5" stroke-linecap="round"/>
+    </svg>`;
+  }
+  return GLYPHS[piece.color][piece.type];
+}
+
+const PIECE_VALUES = { P: 1, N: 3, B: 3, R: 5, G: 6, Q: 9, K: 100 };
+
+let board = [];
+let pieceElements = new Map();
+let nextPieceId = 1;
+
+let turn = 'w';
+let selected = null;
+let validMoves = [];
+let lastMove = null;
+let halfMoves = 0;
+let gameOver = false;
+
+let kingLives = { w: 3, b: 3 };
+let historyStack = [];
+
+// Chaos Effect States
+let craters = new Set();
+let quicksand = new Set();
+let landmines = new Set();
+let trampolines = new Set();
+let lavaTiles = new Set();
+let portals = null;
+let iceFloorTurns = 0;
+let fogTurns = 0;
+let truceTurns = 0;
+let berserkKnightsTurns = 0;
+let queenNerfTurns = 0;
+let reversePawnTurns = 0;
+let magneticRepelTurns = 0;
+
+function spawnRoyalGuardDiagonalPawns(r, c, color) {
+  const diags = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
+  let count = 0;
+  diags.forEach(([dr, dc]) => {
+    const nr = r + dr, nc = c + dc;
+    if (inBounds(nr, nc) && !board[nr][nc] && !craters.has(`${nr},${nc}`) && !lavaTiles.has(`${nr},${nc}`)) {
+      board[nr][nc] = createPiece(color, 'P');
+      count++;
+    }
+  });
+  return count;
+}
+
+const MODIFIERS = [
+  {
+    name: "1. Wormholes",
+    desc: "Two linked portals appear! Landing on one instantly teleports the piece to the other.",
+    apply: () => {
+      const empty = getEmptySquares();
+      if (empty.length >= 2) {
+        shuffle(empty);
+        portals = { a: empty[0], b: empty[1] };
+      }
+    }
+  },
+  {
+    name: "2. Meteor Shower",
+    desc: "3 meteors smash into empty squares, creating impassable craters.",
+    apply: () => {
+      const empty = getEmptySquares();
+      shuffle(empty);
+      empty.slice(0, 3).forEach(([r, c]) => craters.add(`${r},${c}`));
+    }
+  },
+  {
+    name: "3. Ice Floor",
+    desc: "The board freezes for 2 rounds! Sliding pieces (R, B, Q) skid 1 extra square if clear.",
+    apply: () => { iceFloorTurns = 4; }
+  },
+  {
+    name: "4. Earthquake",
+    desc: "Two random rows shift horizontally, wrapping around the edges!",
+    apply: () => {
+      const rows = [0, 1, 2, 3, 4, 5, 6, 7];
+      shuffle(rows);
+      rows.slice(0, 2).forEach(r => {
+        const dir = Math.random() < 0.5 ? 1 : -1;
+        const oldRow = [...board[r]];
+        for (let c = 0; c < 8; c++) {
+          board[r][(c + dir + 8) % 8] = oldRow[c];
+        }
+      });
+    }
+  },
+  {
+    name: "5. Quicksand",
+    desc: "3 tiles turn into quicksand. Pieces landing there get trapped for 2 turns!",
+    apply: () => {
+      const empty = getEmptySquares();
+      shuffle(empty);
+      empty.slice(0, 3).forEach(([r, c]) => quicksand.add(`${r},${c}`));
+    }
+  },
+  {
+    name: "6. Pawn Promotion Surge",
+    desc: "One random pawn on each side instantly evolves into a Knight or Bishop!",
+    apply: () => {
+      ['w', 'b'].forEach(color => {
+        const pawns = getPiecesByFilter(p => p.color === color && p.type === 'P');
+        if (pawns.length) {
+          const pick = pawns[Math.floor(Math.random() * pawns.length)];
+          pick.piece.type = Math.random() < 0.5 ? 'N' : 'B';
+        }
+      });
+    }
+  },
+  {
+    name: "7. Royal Bodyguard",
+    desc: "Two loyal pawns spawn adjacent to each King to defend the throne.",
+    apply: () => {
+      ['w', 'b'].forEach(color => {
+        const k = findKing(color);
+        if (!k) return;
+        let spawned = 0;
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            const nr = k.r + dr, nc = k.c + dc;
+            if (inBounds(nr, nc) && !board[nr][nc] && !craters.has(`${nr},${nc}`) && !lavaTiles.has(`${nr},${nc}`) && spawned < 2) {
+              board[nr][nc] = createPiece(color, 'P');
+              spawned++;
+            }
+          }
+        }
+      });
+    }
+  },
+  {
+    name: "8. Vampire Blades",
+    desc: "All Knights and Bishops gain Vampire status: their next capture steals the victim's movement type!",
+    apply: () => {
+      getPiecesByFilter(p => p.type === 'N' || p.type === 'B').forEach(x => x.piece.vampire = true);
+    }
+  },
+  {
+    name: "9. Ghost Form",
+    desc: "All Rooks become ghosts for 1 move and can phase through blocking pieces!",
+    apply: () => {
+      getPiecesByFilter(p => p.type === 'R').forEach(x => x.piece.ghost = true);
+    }
+  },
+  {
+    name: "10. Giant Pawn",
+    desc: "One random pawn per side mutates into a Giant Pawn (moves 1 square in any direction).",
+    apply: () => {
+      ['w', 'b'].forEach(color => {
+        const pawns = getPiecesByFilter(p => p.color === color && p.type === 'P');
+        if (pawns.length) {
+          pawns[Math.floor(Math.random() * pawns.length)].piece.giant = true;
+        }
+      });
+    }
+  },
+  {
+    name: "11. Air Raid",
+    desc: "Artillery strikes 3 random non-King squares, obliterating any piece caught inside!",
+    apply: () => {
+      const targets = [];
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          if (!board[r][c] || board[r][c].type !== 'K') targets.push([r, c]);
+        }
+      }
+      shuffle(targets);
+      targets.slice(0, 3).forEach(([r, c]) => {
+        const sq = document.getElementById(`sq-${r}-${c}`);
+        if (sq) {
+          sq.classList.remove('tile-airstrike');
+          void sq.offsetWidth;
+          sq.classList.add('tile-airstrike');
+        }
+        if (board[r][c]) {
+          logEvent(`💥 Air Raid destroyed ${board[r][c].color.toUpperCase()} ${board[r][c].type} at ${coordName(r, c)}!`, true);
+          board[r][c] = null;
+        }
+      });
+    }
+  },
+  {
+    name: "12. Swap Meet",
+    desc: "Two random non-King pieces on the board swap positions!",
+    apply: () => {
+      const list = getPiecesByFilter(p => p.type !== 'K');
+      if (list.length >= 2) {
+        shuffle(list);
+        const a = list[0], b = list[1];
+        const temp = board[a.r][a.c];
+        board[a.r][a.c] = board[b.r][b.c];
+        board[b.r][b.c] = temp;
+      }
+    }
+  },
+  {
+    name: "13. Magnetic Pull",
+    desc: "A magnetic pulse pulls every non-King piece 1 square toward the center of the board!",
+    apply: () => {
+      const order = [];
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          if (board[r][c] && board[r][c].type !== 'K') order.push([r, c]);
+        }
+      }
+      order.sort((a, b) => distCenter(a[0], a[1]) - distCenter(b[0], b[1]));
+      order.forEach(([r, c]) => {
+        const dr = r < 3 ? 1 : (r > 4 ? -1 : 0);
+        const dc = c < 3 ? 1 : (c > 4 ? -1 : 0);
+        const nr = r + dr, nc = c + dc;
+        if ((dr !== 0 || dc !== 0) && !board[nr][nc] && !craters.has(`${nr},${nc}`) && !lavaTiles.has(`${nr},${nc}`)) {
+          board[nr][nc] = board[r][c];
+          board[r][c] = null;
+        }
+      });
+    }
+  },
+  {
+    name: "14. Berserk Knights",
+    desc: "For 2 rounds, Knights can move twice in a single turn!",
+    apply: () => { berserkKnightsTurns = 4; }
+  },
+  {
+    name: "15. Time Rewind",
+    desc: "A temporal rift rewinds the board back 1 move!",
+    apply: () => {
+      if (historyStack.length > 0) {
+        const prev = historyStack.pop();
+        board = prev.board;
+        craters = prev.craters;
+        quicksand = prev.quicksand;
+        landmines = prev.landmines;
+        trampolines = prev.trampolines;
+        lavaTiles = prev.lavaTiles;
+        logEvent("⏪ Time Rewind reverted the previous move!", true);
+      }
+    }
+  },
+  {
+    name: "16. Fog of War",
+    desc: "Dense fog hides enemy pieces more than 2 squares away from your army for 2 rounds!",
+    apply: () => { fogTurns = 4; }
+  },
+  {
+    name: "17. Mirror Realm",
+    desc: "The entire board flips horizontally left-to-right!",
+    apply: () => {
+      for (let r = 0; r < 8; r++) {
+        board[r].reverse();
+      }
+    }
+  },
+  {
+    name: "18. Clone Army",
+    desc: "Each side duplicates one random Knight, Bishop, or Rook onto an empty adjacent square!",
+    apply: () => {
+      ['w', 'b'].forEach(color => {
+        const minors = getPiecesByFilter(p => p.color === color && ['N', 'B', 'R'].includes(p.type));
+        if (!minors.length) return;
+        const pick = minors[Math.floor(Math.random() * minors.length)];
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            const nr = pick.r + dr, nc = pick.c + dc;
+            if (inBounds(nr, nc) && !board[nr][nc] && !craters.has(`${nr},${nc}`) && !lavaTiles.has(`${nr},${nc}`)) {
+              board[nr][nc] = createPiece(color, pick.piece.type);
+              return;
+            }
+          }
+        }
+      });
+    }
+  },
+  {
+    name: "19. Pacifist Truce",
+    desc: "A temporary ceasefire prevents all captures for 1 full round!",
+    apply: () => { truceTurns = 2; }
+  },
+  {
+    name: "20. King's Teleport",
+    desc: "Both Kings swap places with a random friendly pawn!",
+    apply: () => {
+      ['w', 'b'].forEach(color => {
+        const k = findKing(color);
+        const pawns = getPiecesByFilter(p => p.color === color && p.type === 'P');
+        if (k && pawns.length) {
+          const p = pawns[Math.floor(Math.random() * pawns.length)];
+          board[k.r][k.c] = p.piece;
+          board[p.r][p.c] = k.piece;
+        }
+      });
+    }
+  },
+  {
+    name: "21. Royal Guard Ascension",
+    desc: "A random non-King piece transforms into a custom-crested Royal Guard! It moves & captures 1 square in any direction and spawns 4 diagonal pawns immediately and on every capture.",
+    apply: () => {
+      const candidates = getPiecesByFilter(p => p.type !== 'K' && p.type !== 'G');
+      if (candidates.length > 0) {
+        const pick = candidates[Math.floor(Math.random() * candidates.length)];
+        pick.piece.type = 'G';
+        pick.piece.giant = false;
+        const spawned = spawnRoyalGuardDiagonalPawns(pick.r, pick.c, pick.piece.color);
+        logEvent(`🛡️ ${pick.piece.color === 'w' ? 'White' : 'Black'} promoted a piece at ${coordName(pick.r, pick.c)} into a Royal Guard (+${spawned} diagonal pawns)!`, true);
+      }
+    }
+  },
+  {
+    name: "22. Landmine Field",
+    desc: "4 hidden proximity mines are planted on empty squares. Stepping on one detonates the piece (Kings survive with -1 life)!",
+    apply: () => {
+      const empty = getEmptySquares();
+      shuffle(empty);
+      empty.slice(0, 4).forEach(([r, c]) => landmines.add(`${r},${c}`));
+    }
+  },
+  {
+    name: "23. Trampoline Tiles",
+    desc: "3 spring-loaded trampolines appear! Landing on one launches the piece 2 squares forward.",
+    apply: () => {
+      const empty = getEmptySquares();
+      shuffle(empty);
+      empty.slice(0, 3).forEach(([r, c]) => trampolines.add(`${r},${c}`));
+    }
+  },
+  {
+    name: "24. Volcanic Eruption",
+    desc: "2 center squares erupt into deadly lava tiles that destroy any non-King piece entering them.",
+    apply: () => {
+      const mid = [[3,3],[3,4],[4,3],[4,4],[2,3],[2,4],[5,3],[5,4]];
+      shuffle(mid);
+      mid.slice(0, 2).forEach(([r, c]) => {
+        if (!board[r][c] || board[r][c].type !== 'K') {
+          board[r][c] = null;
+          lavaTiles.add(`${r},${c}`);
+        }
+      });
+    }
+  },
+  {
+    name: "25. Aegis Shield",
+    desc: "One random non-King piece on each side gains a protective Shield that blocks the next capture attempt against it!",
+    apply: () => {
+      ['w', 'b'].forEach(color => {
+        const list = getPiecesByFilter(p => p.color === color && p.type !== 'K');
+        if (list.length) {
+          list[Math.floor(Math.random() * list.length)].piece.shield = true;
+        }
+      });
+    }
+  },
+  {
+    name: "26. Reverse Gravity",
+    desc: "For 2 rounds, pawns march and capture backward instead of forward!",
+    apply: () => { reversePawnTurns = 4; }
+  },
+  {
+    name: "27. Queen's Humble Holiday",
+    desc: "For 2 rounds, all Queens lose their long range and move like standard Pawns!",
+    apply: () => { queenNerfTurns = 4; }
+  },
+  {
+    name: "28. Necromancy",
+    desc: "Each side resurrects a fallen Knight or Bishop onto an empty back-rank square!",
+    apply: () => {
+      ['w', 'b'].forEach(color => {
+        const row = color === 'w' ? 7 : 0;
+        const cols = [0, 1, 2, 3, 4, 5, 6, 7];
+        shuffle(cols);
+        for (const c of cols) {
+          if (!board[row][c] && !craters.has(`${row},${c}`) && !lavaTiles.has(`${row},${c}`)) {
+            board[row][c] = createPiece(color, Math.random() < 0.5 ? 'N' : 'B');
+            break;
+          }
+        }
+      });
+    }
+  },
+  {
+    name: "29. Shockwave Repulsion",
+    desc: "A shockwave from the center blasts all non-King pieces 1 square outward toward the board edges!",
+    apply: () => {
+      const order = [];
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          if (board[r][c] && board[r][c].type !== 'K') order.push([r, c]);
+        }
+      }
+      order.sort((a, b) => distCenter(b[0], b[1]) - distCenter(a[0], a[1]));
+      order.forEach(([r, c]) => {
+        const dr = r <= 3 ? -1 : 1;
+        const dc = c <= 3 ? -1 : 1;
+        const nr = r + dr, nc = c + dc;
+        if (inBounds(nr, nc) && !board[nr][nc] && !craters.has(`${nr},${nc}`) && !lavaTiles.has(`${nr},${nc}`)) {
+          board[nr][nc] = board[r][c];
+          board[r][c] = null;
+        }
+      });
+    }
+  },
+  {
+    name: "30. Chaos Roulette",
+    desc: "Every Knight, Bishop, and Rook on the board randomly mutates into another minor/major piece (N, B, R, or Royal Guard)!",
+    apply: () => {
+      const pool = ['N', 'B', 'R', 'G'];
+      getPiecesByFilter(p => ['N', 'B', 'R'].includes(p.type)).forEach(item => {
+        item.piece.type = pool[Math.floor(Math.random() * pool.length)];
+      });
+    }
+  }
+];
+
+function createPiece(color, type) {
+  return {
+    id: nextPieceId++,
+    color,
+    type,
+    trapped: 0,
+    vampire: false,
+    ghost: false,
+    giant: false,
+    shield: false
+  };
+}
+
+function initBoard() {
+  board = Array.from({ length: 8 }, () => Array(8).fill(null));
+  const backRank = ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'];
+  for (let c = 0; c < 8; c++) {
+    board[0][c] = createPiece('b', backRank[c]);
+    board[1][c] = createPiece('b', 'P');
+    board[6][c] = createPiece('w', 'P');
+    board[7][c] = createPiece('w', backRank[c]);
+  }
+}
+
+function buildGridDOM() {
+  const grid = document.getElementById('boardGrid');
+  grid.innerHTML = '';
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const sq = document.createElement('div');
+      sq.id = `sq-${r}-${c}`;
+      sq.className = `square ${(r + c) % 2 === 0 ? 'light' : 'dark'}`;
+      sq.onclick = () => onSquareClick(r, c);
+      grid.appendChild(sq);
+    }
+  }
+}
+
+function render() {
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const sq = document.getElementById(`sq-${r}-${c}`);
+      sq.className = `square ${(r + c) % 2 === 0 ? 'light' : 'dark'}`;
+      const key = `${r},${c}`;
+      if (craters.has(key)) sq.classList.add('tile-crater');
+      if (quicksand.has(key)) sq.classList.add('tile-quicksand');
+      if (landmines.has(key)) sq.classList.add('tile-mine');
+      if (trampolines.has(key)) sq.classList.add('tile-trampoline');
+      if (lavaTiles.has(key)) sq.classList.add('tile-lava');
+      if (portals) {
+        if (portals.a[0] === r && portals.a[1] === c) sq.classList.add('tile-portal-a');
+        if (portals.b[0] === r && portals.b[1] === c) sq.classList.add('tile-portal-b');
+      }
+      if (selected && selected.r === r && selected.c === c) sq.classList.add('selected');
+      if (lastMove && ((lastMove.from[0] === r && lastMove.from[1] === c) || (lastMove.to[0] === r && lastMove.to[1] === c))) {
+        sq.classList.add('last-move');
+      }
+      const vm = validMoves.find(m => m.r === r && m.c === c);
+      if (vm) {
+        sq.classList.add(board[r][c] ? 'valid-capture' : 'valid-move');
+      }
+      if (fogTurns > 0 && !isVisibleToWhite(r, c)) {
+        sq.classList.add('tile-fog');
+      }
+    }
+  }
+
+  const layer = document.getElementById('piecesLayer');
+  const activeIds = new Set();
+
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const p = board[r][c];
+      if (!p) continue;
+      activeIds.add(p.id);
+      let el = pieceElements.get(p.id);
+      if (!el) {
+        el = document.createElement('div');
+        el.className = `piece ${p.color === 'w' ? 'white' : 'black'}`;
+        el.innerHTML = `<span class="piece-glyph"></span>`;
+        layer.appendChild(el);
+        pieceElements.set(p.id, el);
+      }
+      const glyphEl = el.querySelector('.piece-glyph');
+      const sig = `${p.color}-${p.type}`;
+      if (glyphEl.dataset.sig !== sig) {
+        glyphEl.innerHTML = getPieceVisualHTML(p);
+        glyphEl.dataset.sig = sig;
+      }
+
+      el.classList.toggle('trapped', p.trapped > 0);
+      el.classList.toggle('buffed', p.vampire || p.ghost || p.giant);
+      el.classList.toggle('shielded', !!p.shield);
+
+      if (fogTurns > 0 && p.color === 'b' && !isVisibleToWhite(r, c)) {
+        el.style.opacity = '0';
+      } else {
+        el.style.opacity = '1';
+      }
+
+      el.style.transform = `translate(${c * 100}%, ${r * 100}%)`;
+    }
+  }
+
+  for (const [id, el] of pieceElements.entries()) {
+    if (!activeIds.has(id)) {
+      el.remove();
+      pieceElements.delete(id);
+    }
+  }
+
+  document.getElementById('whiteHearts').textContent = '❤️'.repeat(kingLives.w) + '🖤'.repeat(3 - kingLives.w);
+  document.getElementById('blackHearts').textContent = '❤️'.repeat(kingLives.b) + '🖤'.repeat(3 - kingLives.b);
+  document.getElementById('turnLabel').textContent = turn === 'w' ? 'Your Turn (White)' : 'Bot Thinking...';
+  const movesLeft = 3 - (Math.floor(halfMoves / 2) % 3);
+  document.getElementById('countdownBadge').textContent = `Next Chaos: ${movesLeft} ${movesLeft === 1 ? 'round' : 'rounds'}`;
+}
+
+function isVisibleToWhite(r, c) {
+  for (let wr = 0; wr < 8; wr++) {
+    for (let wc = 0; wc < 8; wc++) {
+      if (board[wr][wc] && board[wr][wc].color === 'w') {
+        if (Math.max(Math.abs(wr - r), Math.abs(wc - c)) <= 2) return true;
+      }
+    }
+  }
+  return false;
+}
+
+function onSquareClick(r, c) {
+  if (gameOver || turn !== 'w') return;
+
+  const move = validMoves.find(m => m.r === r && m.c === c);
+  if (move && selected) {
+    executeMove(selected.r, selected.c, r, c);
+    return;
+  }
+
+  const clicked = board[r][c];
+  if (clicked && clicked.color === 'w') {
+    if (clicked.trapped > 0) {
+      logEvent(`🕸️ That piece is stuck in quicksand for ${clicked.trapped} more turn(s)!`);
+      return;
+    }
+    selected = { r, c };
+    validMoves = getPseudoLegalMoves(r, c);
+  } else {
+    selected = null;
+    validMoves = [];
+  }
+  render();
+}
+
+function getPseudoLegalMoves(r, c) {
+  const p = board[r][c];
+  if (!p || p.trapped > 0) return [];
+  const moves = [];
+  const baseDir = p.color === 'w' ? -1 : 1;
+  const dir = reversePawnTurns > 0 ? -baseDir : baseDir;
+
+  const addMove = (nr, nc) => {
+    if (!inBounds(nr, nc) || craters.has(`${nr},${nc}`)) return false;
+    const target = board[nr][nc];
+    if (!target) {
+      moves.push({ r: nr, c: nc });
+      return true;
+    } else if (target.color !== p.color && truceTurns === 0) {
+      moves.push({ r: nr, c: nc });
+      return false;
+    }
+    return false;
+  };
+
+  const effectiveType = (p.type === 'Q' && queenNerfTurns > 0) ? 'P' : p.type;
+
+  if (effectiveType === 'P') {
+    if (p.giant) {
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr !== 0 || dc !== 0) addMove(r + dr, c + dc);
+        }
+      }
+    } else {
+      const f1 = r + dir;
+      if (inBounds(f1, c) && !board[f1][c] && !craters.has(`${f1},${c}`)) {
+        moves.push({ r: f1, c });
+        const startRow = p.color === 'w' ? 6 : 1;
+        const f2 = r + dir * 2;
+        if (reversePawnTurns === 0 && r === startRow && !board[f2][c] && !craters.has(`${f2},${c}`)) {
+          moves.push({ r: f2, c });
+        }
+      }
+      if (truceTurns === 0) {
+        [-1, 1].forEach(dc => {
+          const nc = c + dc;
+          if (inBounds(f1, nc) && board[f1][nc] && board[f1][nc].color !== p.color) {
+            moves.push({ r: f1, c: nc });
+          }
+        });
+      }
+    }
+  } else if (effectiveType === 'N') {
+    const jumps = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+    jumps.forEach(([dr, dc]) => addMove(r + dr, c + dc));
+  } else if (effectiveType === 'K' || effectiveType === 'G') {
+    // Both King and Royal Guard move and capture 1 square in all 8 directions
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        if (dr !== 0 || dc !== 0) addMove(r + dr, c + dc);
+      }
+    }
+  } else {
+    const dirs = [];
+    if (effectiveType === 'R' || effectiveType === 'Q') dirs.push([-1,0],[1,0],[0,-1],[0,1]);
+    if (effectiveType === 'B' || effectiveType === 'Q') dirs.push([-1,-1],[-1,1],[1,-1],[1,1]);
+    dirs.forEach(([dr, dc]) => {
+      let nr = r + dr, nc = c + dc;
+      while (inBounds(nr, nc)) {
+        if (craters.has(`${nr},${nc}`)) break;
+        const target = board[nr][nc];
+        if (!target) {
+          moves.push({ r: nr, c: nc });
+        } else {
+          if (target.color !== p.color && truceTurns === 0) {
+            moves.push({ r: nr, c: nc });
+          }
+          if (!p.ghost) break;
+        }
+        nr += dr;
+        nc += dc;
+      }
+    });
+  }
+  return moves;
+}
+
+function executeMove(fr, fc, tr, tc, isBonusJump = false) {
+  saveSnapshot();
+  const mover = board[fr][fc];
+  let destR = tr, destC = tc;
+
+  // Ice Floor Skid for sliding pieces
+  if (iceFloorTurns > 0 && ['R', 'B', 'Q'].includes(mover.type) && !board[destR][destC]) {
+    const stepR = Math.sign(tr - fr);
+    const stepC = Math.sign(tc - fc);
+    const skidR = destR + stepR, skidC = destC + stepC;
+    if (inBounds(skidR, skidC) && !board[skidR][skidC] && !craters.has(`${skidR},${skidC}`)) {
+      destR = skidR;
+      destC = skidC;
+      logEvent(`🧊 ${mover.color.toUpperCase()} ${mover.type} skidded on ice to ${coordName(destR, destC)}!`);
+    }
+  }
+
+  const target = board[destR][destC];
+
+  // Check Aegis Shield on target
+  if (target && target.shield) {
+    target.shield = false;
+    logEvent(`🛡️ ${target.color.toUpperCase()} ${target.type}'s Aegis Shield blocked the capture at ${coordName(destR, destC)}!`, true);
+    lastMove = { from: [fr, fc], to: [destR, destC] };
+    selected = null;
+    validMoves = [];
+    advanceTurn();
+    return;
+  }
+
+  board[destR][destC] = mover;
+  board[fr][fc] = null;
+  mover.ghost = false;
+
+  // Handle Capture & King 3-Life Rule
+  if (target) {
+    if (target.type === 'K') {
+      kingLives[target.color]--;
+      logEvent(`👑 ${mover.color === 'w' ? 'WHITE' : 'BLACK'} CAPTURED THE KING! (${kingLives[target.color]} lives left)`, true);
+      if (kingLives[target.color] <= 0) {
+        endMatch(mover.color);
+        render();
+        return;
+      } else {
+        respawnKing(target);
+      }
+    } else {
+      logEvent(`${mover.color === 'w' ? 'You' : 'Bot'} captured ${target.type} at ${coordName(destR, destC)}.`);
+      if (mover.vampire && target.type !== 'K') {
+        mover.type = target.type;
+        mover.vampire = false;
+        logEvent(`🧛 Vampire Blade absorbed ${target.type} powers!`);
+      }
+    }
+
+    // Royal Guard Special Ability: Respawns 4 pawns in the 4 diagonal squares around it on capture
+    if (mover.type === 'G') {
+      const spawned = spawnRoyalGuardDiagonalPawns(destR, destC, mover.color);
+      if (spawned > 0) {
+        logEvent(`🛡️ Royal Guard summoned ${spawned} diagonal pawn(s) after capturing!`, true);
+      }
+    }
+  }
+
+  // Pawn Auto-Promotion on back rank
+  if (mover.type === 'P' && (destR === 0 || destR === 7)) {
+    mover.type = 'Q';
+    logEvent(`👑 Pawn promoted to Queen!`);
+  }
+
+  // Trampoline Tile Launch
+  if (trampolines.has(`${destR},${destC}`)) {
+    const jumpDir = mover.color === 'w' ? -2 : 2;
+    const landR = destR + jumpDir;
+    if (inBounds(landR, destC) && !board[landR][destC] && !craters.has(`${landR},${destC}`)) {
+      board[landR][destC] = mover;
+      board[destR][destC] = null;
+      destR = landR;
+      logEvent(`⏫ Trampoline launched ${mover.type} to ${coordName(destR, destC)}!`, true);
+    }
+  }
+
+  // Wormhole Teleport
+  if (portals) {
+    if (destR === portals.a[0] && destC === portals.a[1] && !board[portals.b[0]][portals.b[1]]) {
+      board[portals.b[0]][portals.b[1]] = mover;
+      board[destR][destC] = null;
+      destR = portals.b[0]; destC = portals.b[1];
+      logEvent(`🌀 Wormhole teleported ${mover.type} to ${coordName(destR, destC)}!`, true);
+    } else if (destR === portals.b[0] && destC === portals.b[1] && !board[portals.a[0]][portals.a[1]]) {
+      board[portals.a[0]][portals.a[1]] = mover;
+      board[destR][destC] = null;
+      destR = portals.a[0]; destC = portals.a[1];
+      logEvent(`🌀 Wormhole teleported ${mover.type} to ${coordName(destR, destC)}!`, true);
+    }
+  }
+
+  // Landmine Explosion
+  const destKey = `${destR},${destC}`;
+  if (landmines.has(destKey)) {
+    landmines.delete(destKey);
+    if (mover.type === 'K') {
+      kingLives[mover.color]--;
+      logEvent(`💣 ${mover.color.toUpperCase()} King stepped on a landmine! (${kingLives[mover.color]} lives left)`, true);
+      if (kingLives[mover.color] <= 0) {
+        endMatch(mover.color === 'w' ? 'b' : 'w');
+        render();
+        return;
+      }
+    } else {
+      board[destR][destC] = null;
+      logEvent(`💣 BOOM! ${mover.color.toUpperCase()} ${mover.type} detonated a landmine at ${coordName(destR, destC)}!`, true);
+    }
+  }
+
+  // Lava Tile Hazard
+  if (lavaTiles.has(destKey) && board[destR][destC]) {
+    if (mover.type !== 'K') {
+      board[destR][destC] = null;
+      logEvent(`🌋 ${mover.color.toUpperCase()} ${mover.type} fell into lava at ${coordName(destR, destC)}!`, true);
+    }
+  }
+
+  // Quicksand Trap
+  if (quicksand.has(destKey) && board[destR][destC]) {
+    mover.trapped = 2;
+    logEvent(`⏳ ${mover.type} sank into quicksand at ${coordName(destR, destC)}!`);
+  }
+
+  lastMove = { from: [fr, fc], to: [destR, destC] };
+  selected = null;
+  validMoves = [];
+
+  // Berserk Knight Double Jump
+  if (!isBonusJump && berserkKnightsTurns > 0 && board[destR][destC] && mover.type === 'N' && mover.trapped === 0) {
+    const extraMoves = getPseudoLegalMoves(destR, destC);
+    if (extraMoves.length > 0 && mover.color === 'w') {
+      selected = { r: destR, c: destC };
+      validMoves = extraMoves;
+      logEvent(`⚔️ Berserk Knight! Make a second jump!`);
+      render();
+      return;
+    }
+  }
+
+  advanceTurn();
+}
+
+function respawnKing(kingPiece) {
+  const homeRows = kingPiece.color === 'w' ? [7, 6] : [0, 1];
+  for (const r of homeRows) {
+    const cols = [0, 1, 2, 3, 4, 5, 6, 7];
+    shuffle(cols);
+    for (const c of cols) {
+      if (!board[r][c] && !craters.has(`${r},${c}`) && !lavaTiles.has(`${r},${c}`)) {
+        board[r][c] = kingPiece;
+        logEvent(`✨ ${kingPiece.color.toUpperCase()} King respawned at ${coordName(r, c)}!`, true);
+        return;
+      }
+    }
+  }
+}
+
+function advanceTurn() {
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const p = board[r][c];
+      if (p && p.color === turn && p.trapped > 0) p.trapped--;
+    }
+  }
+
+  if (iceFloorTurns > 0) iceFloorTurns--;
+  if (fogTurns > 0) fogTurns--;
+  if (truceTurns > 0) truceTurns--;
+  if (berserkKnightsTurns > 0) berserkKnightsTurns--;
+  if (queenNerfTurns > 0) queenNerfTurns--;
+  if (reversePawnTurns > 0) reversePawnTurns--;
+
+  halfMoves++;
+
+  if (halfMoves > 0 && halfMoves % 6 === 0) {
+    triggerRandomModifier();
+  }
+
+  turn = turn === 'w' ? 'b' : 'w';
+  render();
+
+  if (turn === 'b' && !gameOver) {
+    setTimeout(makeBotMove400Elo, 450);
+  }
+}
+
+function makeBotMove400Elo() {
+  if (gameOver || turn !== 'b') return;
+  const allMoves = [];
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      if (board[r][c] && board[r][c].color === 'b') {
+        const moves = getPseudoLegalMoves(r, c);
+        moves.forEach(m => {
+          let score = Math.random() * 4.5;
+          const target = board[m.r][m.c];
+          if (target) {
+            score += PIECE_VALUES[target.type] * (Math.random() < 0.7 ? 1.5 : 0.2);
+          }
+          allMoves.push({ fr: r, fc: c, tr: m.r, tc: m.c, score });
+        });
+      }
+    }
+  }
+
+  if (allMoves.length === 0) {
+    logEvent("Bot has no legal moves and passes turn.");
+    advanceTurn();
+    return;
+  }
+
+  allMoves.sort((a, b) => b.score - a.score);
+  const chosen = allMoves[0];
+  executeMove(chosen.fr, chosen.fc, chosen.tr, chosen.tc);
+}
+
+function triggerRandomModifier() {
+  const mod = MODIFIERS[Math.floor(Math.random() * MODIFIERS.length)];
+  document.getElementById('modTitle').textContent = `⚡ ${mod.name}`;
+  document.getElementById('modDesc').textContent = mod.desc;
+  logEvent(`🎲 CHAOS EVENT: ${mod.name} — ${mod.desc}`, true);
+  mod.apply();
+  render();
+}
+
+function saveSnapshot() {
+  const clonedBoard = board.map(row => row.map(cell => cell ? { ...cell } : null));
+  historyStack.push({
+    board: clonedBoard,
+    craters: new Set(craters),
+    quicksand: new Set(quicksand),
+    landmines: new Set(landmines),
+    trampolines: new Set(trampolines),
+    lavaTiles: new Set(lavaTiles)
+  });
+  if (historyStack.length > 6) historyStack.shift();
+}
+
+function endMatch(winnerColor) {
+  gameOver = true;
+  document.getElementById('winnerTitle').textContent = winnerColor === 'w' ? '🏆 VICTORY!' : '💀 DEFEAT!';
+  document.getElementById('winnerSub').textContent = winnerColor === 'w'
+    ? 'You captured the 400 ELO Bot’s King 3 times!'
+    : 'The 400 ELO Bot captured your King 3 times!';
+  document.getElementById('gameOverModal').classList.add('open');
+}
+
+function openModIndex() {
+  const container = document.getElementById('modListContainer');
+  container.innerHTML = MODIFIERS.map(m =>
+    `<div class="mod-list-item"><strong>${m.name}</strong><span>${m.desc}</span></div>`
+  ).join('');
+  document.getElementById('modIndexModal').classList.add('open');
+}
+
+function closeModIndex() {
+  document.getElementById('modIndexModal').classList.remove('open');
+}
+
+function resetGame() {
+  document.getElementById('gameOverModal').classList.remove('open');
+  pieceElements.clear();
+  document.getElementById('piecesLayer').innerHTML = '';
+  turn = 'w';
+  selected = null;
+  validMoves = [];
+  lastMove = null;
+  halfMoves = 0;
+  gameOver = false;
+  kingLives = { w: 3, b: 3 };
+  historyStack = [];
+  craters.clear();
+  quicksand.clear();
+  landmines.clear();
+  trampolines.clear();
+  lavaTiles.clear();
+  portals = null;
+  iceFloorTurns = 0;
+  fogTurns = 0;
+  truceTurns = 0;
+  berserkKnightsTurns = 0;
+  queenNerfTurns = 0;
+  reversePawnTurns = 0;
+  document.getElementById('eventLog').innerHTML = '';
+  document.getElementById('modTitle').textContent = 'No Active Modifier';
+  document.getElementById('modDesc').textContent = 'Make your opening moves. Every 3rd full turn unleashes one of 30 chaotic modifiers!';
+  initBoard();
+  buildGridDOM();
+  render();
+  logEvent('Match started! Capture the enemy King 3 times to win.');
+}
+
+// Helpers
+function inBounds(r, c) { return r >= 0 && r < 8 && c >= 0 && c < 8; }
+function distCenter(r, c) { return Math.abs(r - 3.5) + Math.abs(c - 3.5); }
+function coordName(r, c) { return `${String.fromCharCode(97 + c)}${8 - r}`; }
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+function getEmptySquares() {
+  const out = [];
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      if (!board[r][c] && !craters.has(`${r},${c}`) && !lavaTiles.has(`${r},${c}`)) out.push([r, c]);
+    }
+  }
+  return out;
+}
+function getPiecesByFilter(fn) {
+  const out = [];
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      if (board[r][c] && fn(board[r][c])) out.push({ r, c, piece: board[r][c] });
+    }
+  }
+  return out;
+}
+function findKing(color) {
+  const res = getPiecesByFilter(p => p.color === color && p.type === 'K');
+  return res.length ? res[0] : null;
+}
+function logEvent(msg, isChaos = false) {
+  const log = document.getElementById('eventLog');
+  const div = document.createElement('div');
+  div.className = `log-entry ${isChaos ? 'chaos' : ''}`;
+  div.textContent = msg;
+  log.prepend(div);
+}
+
+resetGame();
+</script>
+</body>
+</html>
