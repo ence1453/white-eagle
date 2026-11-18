@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>THE FINALS // VIRTUAL ARENA CLONE</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,600;0,700;1,700&family=Teko:wght@600;700&family=Inter:wght@500;700;900&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+
+<body>
+  <!-- 3D Viewport Canvas Container -->
+  <div id="canvas-container"></div>
+
+  <!-- Screen Flash / Damage Overlay -->
+  <div id="damage-overlay"></div>
+  <div id="heal-overlay"></div>
+  <div id="event-tint"></div>
+
+  <!-- ================= IN-GAME HUD ================= -->
+  <div id="hud" class="hidden">
+    <!-- Top Left: Team Cash Scoreboard -->
+    <div id="team-scores">
+      <!-- Populated dynamically by JS -->
+    </div>
+
+    <!-- Top Center: Match Timer & Active Game Show Event -->
+    <div id="top-center-hud">
+      <div id="round-badge">CASHOUT TOURNAMENT // GOAL: $30,000</div>
+      <div id="match-timer">04:00</div>
+      <div id="active-event-banner" class="hidden">
+        <span class="event-icon">⚡</span>
+        <span id="active-event-text">GAME SHOW EVENT: LOW GRAVITY</span>
+      </div>
+    </div>
+
+    <!-- Top Right: Scotty & June Commentary + Killfeed -->
+    <div id="top-right-hud">
+      <div id="announcer-box">
+        <div class="announcer-header">
+          <span class="live-dot"></span> LIVE COMMENTARY // SCOTTY &amp; JUNE
+        </div>
+        <div id="announcer-text">"Welcome to THE FINALS, folks! Let's see who brings down the house today!"</div>
+      </div>
+      <div id="killfeed"></div>
+    </div>
+
+    <!-- 3D-to-2D Floating Waypoint Markers Container -->
+    <div id="waypoints-layer"></div>
+
+    <!-- Floating Enemy Health Bars & Damage Numbers Layer -->
+    <div id="enemy-bars-layer"></div>
+
+    <!-- Center Crosshair, Directional Damage Ring & Hitmarker -->
+    <div id="reticle-container">
+      <div id="damage-indicators-ring"></div>
+      <div id="crosshair">
+        <span class="ch-line ch-top"></span>
+        <span class="ch-line ch-bottom"></span>
+        <span class="ch-line ch-left"></span>
+        <span class="ch-line ch-right"></span>
+        <span class="ch-dot"></span>
+      </div>
+      <div id="hitmarker" class="hidden">
+        <span class="hm-line hm-1"></span>
+        <span class="hm-line hm-2"></span>
+        <span class="hm-line hm-3"></span>
+        <span class="hm-line hm-4"></span>
+      </div>
+      <div id="elim-popup" class="hidden">
+        <div class="elim-coins">+ $500</div>
+        <div id="elim-text">ELIMINATED CONTESTANT</div>
+      </div>
+      <div id="interact-prompt" class="hidden">
+        <div class="interact-key">E</div>
+        <div class="interact-details">
+          <div id="interact-label">STEAL CASHOUT</div>
+          <div id="interact-progress-bar">
+            <div id="interact-progress-fill"></div>
+          </div>
+        </div>
+      </div>
+      <div id="carry-banner" class="hidden">
+        <span class="carry-icon">📦</span> CARRYING CASHBOX — DELIVER TO A CASHOUT STATION OR <kbd>F</kbd> /
+        <kbd>RMB</kbd> TO THROW
+      </div>
+      <div id="respawn-banner" class="hidden">
+        <div class="respawn-tag">CONTESTANT ELIMINATED // SPECTATOR FREECAM</div>
+        <div id="respawn-timer-text">RESPAWNING IN 15.0s</div>
+        <div class="respawn-bar-track"><div id="respawn-bar-fill"></div></div>
+        <div class="respawn-controls-hint">
+          <span><kbd>WASD</kbd> Fly Freecam</span>
+          <span><kbd>MOUSE</kbd> Look</span>
+          <span><kbd>SHIFT</kbd> Fast Fly</span>
+          <span><kbd>E</kbd> / <kbd>C</kbd> Up / Down</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Left: Contestant Health & Build Status -->
+    <div id="bottom-left-hud">
+      <div class="contestant-card">
+        <div class="class-pill" id="hud-class-pill">MEDIUM BUILD</div>
+        <div class="hp-row">
+          <div id="hp-value">250</div>
+          <div id="hp-max">/ 250 HP</div>
+        </div>
+        <div class="hp-bar-outer">
+          <div id="hp-bar-damage"></div>
+          <div id="hp-bar-fill"></div>
+        </div>
+        <div class="movement-hints">
+          <span><kbd>WASD</kbd> Move</span>
+          <span><kbd>SHIFT</kbd> Sprint</span>
+          <span><kbd>C</kbd> Slide</span>
+          <span><kbd>E</kbd> Interact</span>
+          <span><kbd>TAB</kbd> Scoreboard</span>
+          <span><kbd>M</kbd> Change Build</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Right: Weapon Ammo & Loadout Slots (1-4 + Q Specialization) -->
+    <div id="bottom-right-hud">
+      <div id="ammo-display">
+        <div id="weapon-name-hud">AKM ASSAULT RIFLE</div>
+        <div class="ammo-numbers">
+          <span id="ammo-current">36</span>
+          <span class="ammo-sep">/</span>
+          <span id="ammo-mag">36</span>
+        </div>
+        <div id="reload-indicator" class="hidden">RELOADING...</div>
+      </div>
+      <div id="loadout-bar">
+        <div class="slot-item active" id="slot-1">
+          <span class="slot-key">1</span>
+          <span class="slot-icon" id="slot-1-icon">🔫</span>
+          <span class="slot-name" id="slot-1-name">PRIMARY</span>
+          <div class="slot-cd" id="slot-1-cd"></div>
+        </div>
+        <div class="slot-item" id="slot-2">
+          <span class="slot-key">2</span>
+          <span class="slot-icon" id="slot-2-icon">🧨</span>
+          <span class="slot-name" id="slot-2-name">GADGET 1</span>
+          <div class="slot-cd" id="slot-2-cd"></div>
+        </div>
+        <div class="slot-item" id="slot-3">
+          <span class="slot-key">3</span>
+          <span class="slot-icon" id="slot-3-icon">💣</span>
+          <span class="slot-name" id="slot-3-name">GADGET 2</span>
+          <div class="slot-cd" id="slot-3-cd"></div>
+        </div>
+        <div class="slot-item spec-slot" id="slot-q">
+          <span class="slot-key">Q</span>
+          <span class="slot-icon" id="slot-q-icon">🚀</span>
+          <span class="slot-name" id="slot-q-name">SPECIAL</span>
+          <div class="slot-cd" id="slot-q-cd"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= TAB SCOREBOARD OVERLAY ================= -->
+  <div id="scoreboard-modal" class="hidden">
+    <div class="scoreboard-box">
+      <div class="sb-header">
+        <h2>THE FINALS // LIVE TOURNAMENT STANDINGS</h2>
+        <span>SPONSORED BY <strong>OSPUZE — POP. POUR. PERFORM.</strong></span>
+      </div>
+      <table id="scoreboard-table">
+        <thead>
+          <tr>
+            <th>TEAM</th>
+            <th>CASH</th>
+            <th>ELIMS</th>
+            <th>CASHOUTS</th>
+            <th>BLOCKS DESTROYED</th>
+          </tr>
+        </thead>
+        <tbody id="scoreboard-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ================= LOBBY / LOADOUT SELECTION SCREEN ================= -->
+  <div id="lobby-overlay">
+    <div class="lobby-bg-stripes"></div>
+    <div class="lobby-container">
+      <header class="lobby-header">
+        <div class="sponsor-tag">OSPUZE // HOLTOW // VAIIYA VIRTUAL STADIUM</div>
+        <h1 class="game-logo">THE FINALS</h1>
+        <p class="game-subtitle">CAN YOU REACH THE FINALS? // DESTRUCTIBLE ARENA CASHOUT SHOOTER</p>
+      </header>
+
+      <div class="section-label">SELECT YOUR CONTESTANT BUILD</div>
+      <div class="class-cards">
+        <!-- LIGHT -->
+        <div class="class-card" data-class="LIGHT">
+          <div class="card-header">
+            <span class="card-role">ASSASSIN &amp; MOBILITY</span>
+            <h2>LIGHT</h2>
+            <span class="card-hp">175 HP // FAST SPEED</span>
+          </div>
+          <div class="card-body">
+            <div class="loadout-row"><strong>1. WEAPON:</strong> M11 Submachine Gun (1000 RPM)</div>
+            <div class="loadout-row"><strong>2. GADGET:</strong> Thermal Breach Charge (Wall Detonator)</div>
+            <div class="loadout-row"><strong>3. GADGET:</strong> Frag Grenade</div>
+            <div class="loadout-row spec"><strong>Q. SPECIAL:</strong> Grappling Hook (Zip to rooftops!)</div>
+          </div>
+        </div>
+
+        <!-- MEDIUM -->
+        <div class="class-card selected" data-class="MEDIUM">
+          <div class="card-header">
+            <span class="card-role">VERSATILE &amp; SUPPORT</span>
+            <h2>MEDIUM</h2>
+            <span class="card-hp">250 HP // BALANCED</span>
+          </div>
+          <div class="card-body">
+            <div class="loadout-row"><strong>1. WEAPON:</strong> AKM Assault Rifle (High Precision)</div>
+            <div class="loadout-row"><strong>2. GADGET:</strong> Deployable Jump Pad (Launch high!)</div>
+            <div class="loadout-row"><strong>3. GADGET:</strong> Goo Grenade (Instant Foam Cover/Bridge)</div>
+            <div class="loadout-row spec"><strong>Q. SPECIAL:</strong> Combat Stim &amp; Instant Heal (+125 HP)</div>
+          </div>
+        </div>
+
+        <!-- HEAVY -->
+        <div class="class-card" data-class="HEAVY">
+          <div class="card-header">
+            <span class="card-role">DEMOLITION &amp; TANK</span>
+            <h2>HEAVY</h2>
+            <span class="card-hp">350 HP // HEAVY ARMOR</span>
+          </div>
+          <div class="card-body">
+            <div class="loadout-row"><strong>1. WEAPON:</strong> Lewis Gun LMG (47-Round Drum)</div>
+            <div class="loadout-row"><strong>2. GADGET:</strong> RPG-7 Launcher (Massive Destruction!)</div>
+            <div class="loadout-row"><strong>3. GADGET:</strong> C4 Explosive Charge</div>
+            <div class="loadout-row spec"><strong>Q. SPECIAL:</strong> Charge 'N' Slam (Smash through buildings!)</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rules-grid">
+        <div class="rule-item">
+          <span class="rule-num">01</span>
+          <div>
+            <h4>OPEN THE VAULT</h4>
+            <p>Locate glowing <strong>VAULTS</strong> and press <kbd>E</kbd> to unlock a golden <strong>Cashbox</strong>
+              ($10K–$20K).</p>
+          </div>
+        </div>
+        <div class="rule-item">
+          <span class="rule-num">02</span>
+          <div>
+            <h4>START A CASHOUT</h4>
+            <p>Carry (<kbd>E</kbd>) and throw (<kbd>F</kbd>) the Cashbox into a <strong>CASHOUT STATION</strong>, then
+              defend or steal it!</p>
+          </div>
+        </div>
+        <div class="rule-item">
+          <span class="rule-num">03</span>
+          <div>
+            <h4>BRING DOWN THE HOUSE</h4>
+            <p>Every building wall &amp; floor is <strong>100% destructible</strong>. Blow the floor out under a Cashout
+              to drop it down!</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="lobby-actions">
+        <button id="enter-arena-btn" class="cta-btn">ENTER THE ARENA // CLICK TO PLAY</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MATCH OVER / PODIUM OVERLAY ================= -->
+  <div id="gameover-overlay" class="hidden">
+    <div class="gameover-card">
+      <div class="sponsor-tag">TOURNAMENT COMPLETE // VIRTUAL STADIUM</div>
+      <h1 id="winner-banner">THE LIVE WIRES ADVANCE!</h1>
+      <p id="winner-subtext">Scotty: "What an unbelievable display of destruction and cashout control!"</p>
+      <div id="final-podium"></div>
+      <button id="play-again-btn" class="cta-btn">PLAY NEXT TOURNAMENT ROUND</button>
+    </div>
+  </div>
+
+  <script src="js/audio.js?v=5"></script>
+  <script src="js/world.js?v=5"></script>
+  <script src="js/entities.js?v=5"></script>
+  <script src="js/player.js?v=5"></script>
+  <script src="js/game.js?v=5"></script>
+</body>
+
+</html>
