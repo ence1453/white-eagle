@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arcade Hub — Game Portal</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface-hover: #242836;
+      --accent: #6c5ce7;
+      --accent-hover: #8174f2;
+      --text: #f1f2f6;
+      --muted: #9aa0b4;
+      --border: #2c3142;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* Header & Controls */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 1.5rem 2rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      letter-spacing: 0.5px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    input[type="search"], select {
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    input[type="search"]:focus, select:focus {
+      border-color: var(--accent);
+    }
+
+    /* Game Grid */
+    main {
+      max-width: 1200px;
+      margin: 2rem auto;
+      padding: 0 1.5rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.18s ease, border-color 0.18s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: var(--accent);
+    }
+
+    .thumb {
+      height: 140px;
+      background: linear-gradient(135deg, #232738, #161822);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3.5rem;
+      user-select: none;
+    }
+
+    .thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .card-body {
+      padding: 1.2rem;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    .tag {
+      align-self: flex-start;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      background: rgba(108, 92, 231, 0.18);
+      color: #a29bfe;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      margin-bottom: 0.6rem;
+    }
+
+    .card-title {
+      font-size: 1.15rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .card-desc {
+      font-size: 0.9rem;
+      color: var(--muted);
+      line-height: 1.4;
+      margin-bottom: 1.2rem;
+      flex: 1;
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    button.play-btn {
+      flex: 1;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 0.65rem 1rem;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    button.play-btn:hover {
+      background: var(--accent-hover);
+    }
+
+    a.tab-link {
+      background: var(--surface-hover);
+      color: var(--text);
+      text-decoration: none;
+      padding: 0.65rem 0.85rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+    }
+
+    a.tab-link:hover {
+      border-color: var(--muted);
+    }
+
+    /* Fullscreen Game Player Overlay */
+    .player-overlay {
+      position: fixed;
+      inset: 0;
+      background: #000;
+      z-index: 1000;
+      display: none;
+      flex-direction: column;
+    }
+
+    .player-overlay.active {
+      display: flex;
+    }
+
+    .player-bar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0.75rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .player-bar-actions {
+      display: flex;
+      gap: 0.6rem;
+    }
+
+    .bar-btn {
+      background: var(--surface-hover);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 0.45rem 0.9rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    .bar-btn.close {
+      background: #d63031;
+      border-color: #d63031;
+      color: #fff;
+    }
+
+    iframe#gameFrame {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: #000;
+    }
+
+    .empty-state {
+      text-align: center;
+      color: var(--muted);
+      padding: 3rem 1rem;
+      grid-column: 1 / -1;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>🕹️ Arcade Hub</h1>
+    <div class="controls">
+      <input type="search" id="searchInput" placeholder="Search games..." />
+      <select id="categoryFilter">
+        <option value="All">All Categories</option>
+      </select>
+    </div>
+  </header>
+
+  <main>
+    <div class="grid" id="gameGrid"></div>
+  </main>
+
+  <!-- In-Portal Game Player -->
+  <div class="player-overlay" id="playerOverlay">
+    <div class="player-bar">
+      <strong id="activeGameTitle">Playing Game</strong>
+      <div class="player-bar-actions">
+        <button class="bar-btn" id="fullscreenBtn">⛶ Fullscreen</button>
+        <button class="bar-btn" id="reloadBtn">↻ Restart</button>
+        <button class="bar-btn close" id="closeBtn">✕ Back to Portal</button>
+      </div>
+    </div>
+    <iframe id="gameFrame" title="Game Viewport" allowfullscreen></iframe>
+  </div>
+
+  <script>
+    // ==========================================
+    // 1. ADD YOUR HTML GAMES HERE
+    // ==========================================
+    const GAMES = [
+      {
+        title: "Neon Snake",
+        category: "Arcade",
+        description: "Eat glowing orbs and grow longer without hitting the walls.",
+        file: "games/snake.html",
+        icon: "🐍" // You can also add thumbnail: "images/snake.png"
+      },
+      {
+        title: "Block Stacker",
+        category: "Puzzle",
+        description: "Rotate and clear falling rows before the board fills up.",
+        file: "games/tetris.html",
+        icon: "🧱"
+      },
+      {
+        title: "Star Defender",
+        category: "Shooter",
+        description: "Blast waves of incoming alien ships in classic retro style.",
+        file: "games/space-invaders.html",
+        icon: "🚀"
+      }
+    ];
+
+    // ==========================================
+    // 2. PORTAL LOGIC (NO NEED TO EDIT BELOW)
+    // ==========================================
+    const gameGrid = document.getElementById("gameGrid");
+    const searchInput = document.getElementById("searchInput");
+    const categoryFilter = document.getElementById("categoryFilter");
+    const playerOverlay = document.getElementById("playerOverlay");
+    const gameFrame = document.getElementById("gameFrame");
+    const activeGameTitle = document.getElementById("activeGameTitle");
+
+    // Populate category dropdown dynamically
+    const categories = ["All", ...new Set(GAMES.map(g => g.category))];
+    categories.forEach(cat => {
+      if (cat === "All") return;
+      const opt = document.createElement("option");
+      opt.value = cat;
+      opt.textContent = cat;
+      categoryFilter.appendChild(opt);
+    });
+
+    function renderGames() {
+      const query = searchInput.value.toLowerCase().trim();
+      const selectedCat = categoryFilter.value;
+
+      const filtered = GAMES.filter(game => {
+        const matchesCat = selectedCat === "All" || game.category === selectedCat;
+        const matchesSearch =
+          game.title.toLowerCase().includes(query) ||
+          game.description.toLowerCase().includes(query);
+        return matchesCat && matchesSearch;
+      });
+
+      gameGrid.innerHTML = "";
+
+      if (filtered.length === 0) {
+        gameGrid.innerHTML = `<div class="empty-state">No games match your search.</div>`;
+        return;
+      }
+
+      filtered.forEach(game => {
+        const card = document.createElement("div");
+        card.className = "card";
+
+        const thumbContent = game.thumbnail
+          ? `<img src="${game.thumbnail}" alt="${game.title}" />`
+          : `<span>${game.icon || "🎮"}</span>`;
+
+        card.innerHTML = `
+          <div class="thumb">${thumbContent}</div>
+          <div class="card-body">
+            <span class="tag">${game.category}</span>
+            <h2 class="card-title">${game.title}</h2>
+            <p class="card-desc">${game.description}</p>
+            <div class="card-actions">
+              <button class="play-btn">Play Now</button>
+              <a class="tab-link" href="${game.file}" target="_blank" title="Open in new tab">↗</a>
+            </div>
+          </div>
+        `;
+
+        card.querySelector(".play-btn").addEventListener("click", () => openGame(game));
+        gameGrid.appendChild(card);
+      });
+    }
+
+    function openGame(game) {
+      activeGameTitle.textContent = game.title;
+      gameFrame.src = game.file;
+      playerOverlay.classList.add("active");
+      gameFrame.focus();
+    }
+
+    function closeGame() {
+      playerOverlay.classList.remove("active");
+      gameFrame.src = "about:blank"; // Stops game audio and loops
+    }
+
+    document.getElementById("closeBtn").addEventListener("click", closeGame);
+
+    document.getElementById("reloadBtn").addEventListener("click", () => {
+      gameFrame.contentWindow.location.reload();
+      gameFrame.focus();
+    });
+
+    document.getElementById("fullscreenBtn").addEventListener("click", () => {
+      if (!document.fullscreenElement) {
+        playerOverlay.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen();
+      }
+    });
+
+    // Close overlay on Escape key (when not in native fullscreen)
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape" && playerOverlay.classList.contains("active")) {
+        closeGame();
+      }
+    });
+
+    searchInput.addEventListener("input", renderGames);
+    categoryFilter.addEventListener("change", renderGames);
+
+    // Initial render
+    renderGames();
+  </script>
+</body>
+</html>
