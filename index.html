@@ -369,6 +369,19 @@
         icon: "♟️",
         versions: [
           {
+            version: "1.3.0", date: "2026-11-18", title: "Boom & Bots Update",
+            changes: [
+              { type: "new", text: "Added a small explosion effect when a piece is captured or destroyed, including King captures, Air Raid, landmines, lava and Volcanic Eruption." },
+              { type: "new", text: "Added a dust cloud effect and a pop-in animation when a piece spawns, including Royal Bodyguard, Clone Army, Necromancy, Royal Guard pawns and King respawns." },
+              { type: "new", text: "Added a 200 ELO Beginner bot that plays almost randomly and rarely notices captures." },
+              { type: "new", text: "Added an 800 ELO bot that weighs trades, avoids hanging pieces, escapes threats, dodges hazards and pushes pawns to promote." },
+              { type: "new", text: "Added a Bot Difficulty selector (200 / 400 / 800 ELO) to the sidebar." },
+              { type: "change", text: "The original bot is now the 400 ELO bot and remains the default." },
+              { type: "change", text: "The title, scoreboard label and win/lose message now show the selected bot's ELO." },
+              { type: "change", text: "Effects on squares hidden by Fog of War are not shown, so they don't reveal enemy positions." }
+             ]
+          },
+          {
             version: "1.2.0", date: "2026-11-10", title: "Modifier Madness",
             changes: [
               { type: "new", text: "Added 6 new chaos modifiers, including Teleporting Pawns." },
