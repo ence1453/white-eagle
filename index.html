@@ -14,13 +14,13 @@
       --text: #f1f2f6;
       --muted: #9aa0b4;
       --border: #2c3142;
+      --new: #00b894;
+      --fix: #fdcb6e;
+      --change: #74b9ff;
+      --remove: #ff7675;
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
@@ -40,17 +40,8 @@
       justify-content: space-between;
       gap: 1rem;
     }
-
-    header h1 {
-      font-size: 1.5rem;
-      letter-spacing: 0.5px;
-    }
-
-    .controls {
-      display: flex;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-    }
+    header h1 { font-size: 1.5rem; letter-spacing: 0.5px; }
+    .controls { display: flex; gap: 0.75rem; flex-wrap: wrap; }
 
     input[type="search"], select {
       background: var(--bg);
@@ -61,18 +52,10 @@
       font-size: 0.95rem;
       outline: none;
     }
-
-    input[type="search"]:focus, select:focus {
-      border-color: var(--accent);
-    }
+    input[type="search"]:focus, select:focus { border-color: var(--accent); }
 
     /* Game Grid */
-    main {
-      max-width: 1200px;
-      margin: 2rem auto;
-      padding: 0 1.5rem;
-    }
-
+    main { max-width: 1200px; margin: 2rem auto; padding: 0 1.5rem; }
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -88,11 +71,7 @@
       flex-direction: column;
       transition: transform 0.18s ease, border-color 0.18s ease;
     }
-
-    .card:hover {
-      transform: translateY(-4px);
-      border-color: var(--accent);
-    }
+    .card:hover { transform: translateY(-4px); border-color: var(--accent); }
 
     .thumb {
       height: 140px;
@@ -103,22 +82,18 @@
       font-size: 3.5rem;
       user-select: none;
     }
+    .thumb img { width: 100%; height: 100%; object-fit: cover; }
 
-    .thumb img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
+    .card-body { padding: 1.2rem; display: flex; flex-direction: column; flex: 1; }
 
-    .card-body {
-      padding: 1.2rem;
+    .card-meta {
       display: flex;
-      flex-direction: column;
-      flex: 1;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.6rem;
+      gap: 0.5rem;
     }
-
     .tag {
-      align-self: flex-start;
       font-size: 0.75rem;
       text-transform: uppercase;
       letter-spacing: 0.6px;
@@ -126,26 +101,30 @@
       color: #a29bfe;
       padding: 0.25rem 0.6rem;
       border-radius: 6px;
-      margin-bottom: 0.6rem;
+    }
+    .version-badge {
+      font-size: 0.75rem;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      font-variant-numeric: tabular-nums;
+    }
+    .version-badge.fresh {
+      color: var(--new);
+      border-color: var(--new);
     }
 
-    .card-title {
-      font-size: 1.15rem;
-      margin-bottom: 0.4rem;
-    }
-
+    .card-title { font-size: 1.15rem; margin-bottom: 0.4rem; }
     .card-desc {
       font-size: 0.9rem;
       color: var(--muted);
       line-height: 1.4;
-      margin-bottom: 1.2rem;
+      margin-bottom: 1rem;
       flex: 1;
     }
 
-    .card-actions {
-      display: flex;
-      gap: 0.5rem;
-    }
+    .card-actions { display: flex; gap: 0.5rem; }
 
     button.play-btn {
       flex: 1;
@@ -158,12 +137,9 @@
       cursor: pointer;
       transition: background 0.15s ease;
     }
+    button.play-btn:hover { background: var(--accent-hover); }
 
-    button.play-btn:hover {
-      background: var(--accent-hover);
-    }
-
-    a.tab-link {
+    button.notes-btn, a.tab-link {
       background: var(--surface-hover);
       color: var(--text);
       text-decoration: none;
@@ -174,11 +150,9 @@
       align-items: center;
       justify-content: center;
       border: 1px solid var(--border);
+      cursor: pointer;
     }
-
-    a.tab-link:hover {
-      border-color: var(--muted);
-    }
+    button.notes-btn:hover, a.tab-link:hover { border-color: var(--muted); }
 
     /* Fullscreen Game Player Overlay */
     .player-overlay {
@@ -189,11 +163,7 @@
       display: none;
       flex-direction: column;
     }
-
-    .player-overlay.active {
-      display: flex;
-    }
-
+    .player-overlay.active { display: flex; }
     .player-bar {
       background: var(--surface);
       border-bottom: 1px solid var(--border);
@@ -202,12 +172,7 @@
       align-items: center;
       justify-content: space-between;
     }
-
-    .player-bar-actions {
-      display: flex;
-      gap: 0.6rem;
-    }
-
+    .player-bar-actions { display: flex; gap: 0.6rem; }
     .bar-btn {
       background: var(--surface-hover);
       color: var(--text);
@@ -217,13 +182,7 @@
       cursor: pointer;
       font-size: 0.9rem;
     }
-
-    .bar-btn.close {
-      background: #d63031;
-      border-color: #d63031;
-      color: #fff;
-    }
-
+    .bar-btn.close { background: #d63031; border-color: #d63031; color: #fff; }
     iframe#gameFrame {
       flex: 1;
       width: 100%;
@@ -238,6 +197,116 @@
       padding: 3rem 1rem;
       grid-column: 1 / -1;
     }
+
+    /* Patch Notes Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 900;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .modal-backdrop.active { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      width: 100%;
+      max-width: 640px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .modal-head {
+      padding: 1.1rem 1.4rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .modal-head h2 { font-size: 1.2rem; }
+    .modal-head small { color: var(--muted); display: block; margin-top: 0.15rem; }
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 1.4rem;
+      cursor: pointer;
+      line-height: 1;
+    }
+    .modal-close:hover { color: var(--text); }
+
+    .modal-body { overflow-y: auto; padding: 1.2rem 1.4rem 1.6rem; }
+
+    .release {
+      border-left: 2px solid var(--border);
+      padding: 0 0 1.4rem 1.1rem;
+      position: relative;
+    }
+    .release:last-child { padding-bottom: 0; }
+    .release::before {
+      content: "";
+      position: absolute;
+      left: -6px;
+      top: 4px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--border);
+    }
+    .release.latest { border-left-color: var(--accent); }
+    .release.latest::before { background: var(--accent); }
+
+    .release-head {
+      display: flex;
+      align-items: baseline;
+      gap: 0.7rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.2rem;
+    }
+    .release-head h3 { font-size: 1.05rem; }
+    .release-head time { color: var(--muted); font-size: 0.85rem; }
+    .latest-pill {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      background: var(--accent);
+      color: #fff;
+      padding: 0.15rem 0.45rem;
+      border-radius: 5px;
+    }
+    .release-title { color: var(--muted); font-size: 0.9rem; margin-bottom: 0.6rem; }
+
+    .change-list { list-style: none; display: flex; flex-direction: column; gap: 0.4rem; }
+    .change-list li {
+      display: flex;
+      gap: 0.6rem;
+      align-items: baseline;
+      font-size: 0.92rem;
+      line-height: 1.4;
+    }
+    .chip {
+      flex: none;
+      min-width: 64px;
+      text-align: center;
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 700;
+      padding: 0.15rem 0.4rem;
+      border-radius: 5px;
+      color: #0f1117;
+    }
+    .chip.new { background: var(--new); }
+    .chip.fix { background: var(--fix); }
+    .chip.change { background: var(--change); }
+    .chip.remove { background: var(--remove); }
   </style>
 </head>
 <body>
@@ -256,11 +325,26 @@
     <div class="grid" id="gameGrid"></div>
   </main>
 
+  <!-- Patch Notes Modal -->
+  <div class="modal-backdrop" id="notesBackdrop">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="notesTitle">
+      <div class="modal-head">
+        <div>
+          <h2 id="notesTitle">Patch Notes</h2>
+          <small id="notesSubtitle"></small>
+        </div>
+        <button class="modal-close" id="notesClose" aria-label="Close patch notes">✕</button>
+      </div>
+      <div class="modal-body" id="notesBody"></div>
+    </div>
+  </div>
+
   <!-- In-Portal Game Player -->
   <div class="player-overlay" id="playerOverlay">
     <div class="player-bar">
       <strong id="activeGameTitle">Playing Game</strong>
       <div class="player-bar-actions">
+        <button class="bar-btn" id="patchBtn">📋 Patch Notes</button>
         <button class="bar-btn" id="fullscreenBtn">⛶ Fullscreen</button>
         <button class="bar-btn" id="reloadBtn">↻ Restart</button>
         <button class="bar-btn close" id="closeBtn">✕ Back to Portal</button>
@@ -273,41 +357,159 @@
     // ==========================================
     // 1. ADD YOUR HTML GAMES HERE
     // ==========================================
+    // Each game has a `versions` array, NEWEST FIRST.
+    // Change types: "new", "fix", "change", "remove"
+    // (The notes below are placeholders — replace with your real history.)
     const GAMES = [
       {
         title: "Chaos Chess",
         category: "Puzzle",
         description: "Verse a bot in a match of chess with chaotic modifiers.",
         file: "spaces/chaos_chess.html",
-        icon: "♟️" // You can also add thumbnail: "images/snake.png"
+        icon: "♟️",
+        versions: [
+          {
+            version: "1.2.0", date: "2026-11-10", title: "Modifier Madness",
+            changes: [
+              { type: "new", text: "Added 6 new chaos modifiers, including Teleporting Pawns." },
+              { type: "change", text: "Bot now considers active modifiers when picking moves." },
+              { type: "fix", text: "Castling no longer breaks when a modifier moves the rook." }
+            ]
+          },
+          {
+            version: "1.1.0", date: "2026-10-22", title: "Smarter Bot",
+            changes: [
+              { type: "new", text: "Difficulty selector: Easy, Normal, Hard." },
+              { type: "fix", text: "Fixed en passant capturing the wrong piece." }
+            ]
+          },
+          {
+            version: "1.0.0", date: "2026-10-01", title: "Initial Release",
+            changes: [
+              { type: "new", text: "Play chess against a bot with randomized chaotic modifiers." }
+            ]
+          }
+        ]
       },
       {
         title: "Bitlife",
         category: "Simulation",
         description: "Experience another life.",
         file: "spaces/bitlife.html",
-        icon: "🟥"
+        icon: "🟥",
+        versions: [
+          {
+            version: "2.0.1", date: "2026-11-14", title: "Hotfix",
+            changes: [
+              { type: "fix", text: "Save data no longer resets after aging up past 80." },
+              { type: "fix", text: "Fixed duplicate job offers appearing in the same year." }
+            ]
+          },
+          {
+            version: "2.0.0", date: "2026-11-05", title: "Careers & Relationships",
+            changes: [
+              { type: "new", text: "Expanded career paths with promotions and layoffs." },
+              { type: "new", text: "Relationship events: dating, marriage, and family." },
+              { type: "change", text: "Rebalanced random event frequency." }
+            ]
+          },
+          {
+            version: "1.0.0", date: "2026-09-18", title: "Initial Release",
+            changes: [
+              { type: "new", text: "Live a life from birth to old age, one year at a time." }
+            ]
+          }
+        ]
       },
       {
         title: "Conquest",
         category: "Shooter",
         description: "Massive 50v50 battlefield conquest with vehicles and weapons.",
         file: "spaces/conquest.html",
-        icon: "🔫"
+        icon: "🔫",
+        versions: [
+          {
+            version: "0.9.0", date: "2026-11-12", title: "Armor Update",
+            changes: [
+              { type: "new", text: "Added tanks and a transport helicopter." },
+              { type: "change", text: "Capture points now fill faster with more players nearby." },
+              { type: "fix", text: "Reduced lag in large firefights." },
+              { type: "remove", text: "Removed the unbalanced sniper rifle scope glint." }
+            ]
+          },
+          {
+            version: "0.8.0", date: "2026-10-27", title: "Weapons Pass",
+            changes: [
+              { type: "new", text: "Three new weapon classes: DMR, LMG, and shotgun." },
+              { type: "change", text: "Improved bot aim and squad behavior." }
+            ]
+          },
+          {
+            version: "0.5.0", date: "2026-10-03", title: "Playable Alpha",
+            changes: [
+              { type: "new", text: "First playable 50v50 conquest match." }
+            ]
+          }
+        ]
       },
       {
         title: "Fighter Jet 3D",
         category: "Shooter",
         description: "Realistic fighter jet simualator with difficult enemies",
         file: "spaces/fighter-jet-3d-sim.html",
-        icon: "✈️"
+        icon: "✈️",
+        versions: [
+          {
+            version: "1.3.0", date: "2026-11-16", title: "Dogfight Overhaul",
+            changes: [
+              { type: "new", text: "Added flares and countermeasures." },
+              { type: "change", text: "Enemy pilots now use evasive maneuvers." },
+              { type: "fix", text: "Fixed camera clipping into the cockpit on hard turns." }
+            ]
+          },
+          {
+            version: "1.2.0", date: "2026-11-01", title: "New Skies",
+            changes: [
+              { type: "new", text: "Dynamic weather and cloud layers." },
+              { type: "fix", text: "Missiles no longer lose lock through clouds incorrectly." }
+            ]
+          },
+          {
+            version: "1.0.0", date: "2026-09-25", title: "Initial Release",
+            changes: [
+              { type: "new", text: "3D fighter jet flight sim with enemy aircraft." }
+            ]
+          }
+        ]
       },
       {
         title: "The Finals",
         category: "Shooter",
         description: "Fight 3 teams in a battle to get the most cash.",
         file: "spaces/finals_ui_patch12.html",
-        icon: "💵"
+        icon: "💵",
+        versions: [
+          {
+            version: "Patch 12", date: "2026-11-17", title: "UI Overhaul",
+            changes: [
+              { type: "change", text: "Redesigned HUD, scoreboard, and cash-out indicators." },
+              { type: "fix", text: "Fixed cashout timer desync between teams." }
+            ]
+          },
+          {
+            version: "Patch 11", date: "2026-11-08", title: "Balance Pass",
+            changes: [
+              { type: "change", text: "Reduced cash payout from early vault drops." },
+              { type: "fix", text: "Fixed players spawning inside walls." }
+            ]
+          },
+          {
+            version: "Patch 1", date: "2026-09-30", title: "Initial Release",
+            changes: [
+              { type: "new", text: "Three-team cash-grab matches." }
+            ]
+          }
+        ]
       }
     ];
 
@@ -320,6 +522,37 @@
     const playerOverlay = document.getElementById("playerOverlay");
     const gameFrame = document.getElementById("gameFrame");
     const activeGameTitle = document.getElementById("activeGameTitle");
+    const notesBackdrop = document.getElementById("notesBackdrop");
+    const notesBody = document.getElementById("notesBody");
+    const notesTitle = document.getElementById("notesTitle");
+    const notesSubtitle = document.getElementById("notesSubtitle");
+
+    let activeGame = null;
+    const FRESH_DAYS = 14;
+
+    const CHIP_LABELS = { new: "New", fix: "Fix", change: "Change", remove: "Removed" };
+
+    function escapeHTML(str) {
+      return String(str).replace(/[&<>"']/g, c => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[c]));
+    }
+
+    function formatDate(iso) {
+      const d = new Date(iso + "T00:00:00");
+      if (isNaN(d)) return iso;
+      return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+    }
+
+    function isFresh(iso) {
+      const d = new Date(iso + "T00:00:00");
+      if (isNaN(d)) return false;
+      return (Date.now() - d.getTime()) / 86400000 <= FRESH_DAYS;
+    }
+
+    function latestVersion(game) {
+      return game.versions && game.versions.length ? game.versions[0] : null;
+    }
 
     // Populate category dropdown dynamically
     const categories = ["All", ...new Set(GAMES.map(g => g.category))];
@@ -358,25 +591,79 @@
           ? `<img src="${game.thumbnail}" alt="${game.title}" />`
           : `<span>${game.icon || "🎮"}</span>`;
 
+        const latest = latestVersion(game);
+        const badge = latest
+          ? `<span class="version-badge ${isFresh(latest.date) ? "fresh" : ""}" title="Updated ${formatDate(latest.date)}">${isFresh(latest.date) ? "● " : ""}v${escapeHTML(latest.version.replace(/^v/i, ""))}</span>`
+          : "";
+
         card.innerHTML = `
           <div class="thumb">${thumbContent}</div>
           <div class="card-body">
-            <span class="tag">${game.category}</span>
+            <div class="card-meta">
+              <span class="tag">${game.category}</span>
+              ${badge}
+            </div>
             <h2 class="card-title">${game.title}</h2>
             <p class="card-desc">${game.description}</p>
             <div class="card-actions">
               <button class="play-btn">Play Now</button>
+              <button class="notes-btn" title="Patch notes">📋</button>
               <a class="tab-link" href="${game.file}" target="_blank" title="Open in new tab">↗</a>
             </div>
           </div>
         `;
 
         card.querySelector(".play-btn").addEventListener("click", () => openGame(game));
+        card.querySelector(".notes-btn").addEventListener("click", () => openNotes(game));
         gameGrid.appendChild(card);
       });
     }
 
+    // ---------- Patch notes ----------
+    function openNotes(game) {
+      notesTitle.textContent = `${game.title} — Patch Notes`;
+      const versions = game.versions || [];
+      notesSubtitle.textContent = versions.length
+        ? `${versions.length} release${versions.length === 1 ? "" : "s"} · latest ${versions[0].version}`
+        : "";
+
+      if (!versions.length) {
+        notesBody.innerHTML = `<div class="empty-state">No patch notes yet for this game.</div>`;
+      } else {
+        notesBody.innerHTML = versions.map((v, i) => `
+          <div class="release ${i === 0 ? "latest" : ""}">
+            <div class="release-head">
+              <h3>${escapeHTML(v.version)}</h3>
+              <time datetime="${escapeHTML(v.date)}">${formatDate(v.date)}</time>
+              ${i === 0 ? `<span class="latest-pill">Latest</span>` : ""}
+            </div>
+            ${v.title ? `<div class="release-title">${escapeHTML(v.title)}</div>` : ""}
+            <ul class="change-list">
+              ${(v.changes || []).map(c => `
+                <li>
+                  <span class="chip ${escapeHTML(c.type)}">${CHIP_LABELS[c.type] || escapeHTML(c.type)}</span>
+                  <span>${escapeHTML(c.text)}</span>
+                </li>`).join("")}
+            </ul>
+          </div>
+        `).join("");
+      }
+      notesBody.scrollTop = 0;
+      notesBackdrop.classList.add("active");
+    }
+
+    function closeNotes() {
+      notesBackdrop.classList.remove("active");
+    }
+
+    document.getElementById("notesClose").addEventListener("click", closeNotes);
+    notesBackdrop.addEventListener("click", e => {
+      if (e.target === notesBackdrop) closeNotes();
+    });
+
+    // ---------- Player ----------
     function openGame(game) {
+      activeGame = game;
       activeGameTitle.textContent = game.title;
       gameFrame.src = game.file;
       playerOverlay.classList.add("active");
@@ -386,9 +673,14 @@
     function closeGame() {
       playerOverlay.classList.remove("active");
       gameFrame.src = "about:blank"; // Stops game audio and loops
+      activeGame = null;
     }
 
     document.getElementById("closeBtn").addEventListener("click", closeGame);
+
+    document.getElementById("patchBtn").addEventListener("click", () => {
+      if (activeGame) openNotes(activeGame);
+    });
 
     document.getElementById("reloadBtn").addEventListener("click", () => {
       gameFrame.contentWindow.location.reload();
@@ -403,9 +695,12 @@
       }
     });
 
-    // Close overlay on Escape key (when not in native fullscreen)
+    // Escape: close patch notes first, otherwise close the game
     document.addEventListener("keydown", e => {
-      if (e.key === "Escape" && playerOverlay.classList.contains("active")) {
+      if (e.key !== "Escape") return;
+      if (notesBackdrop.classList.contains("active")) {
+        closeNotes();
+      } else if (playerOverlay.classList.contains("active")) {
         closeGame();
       }
     });
