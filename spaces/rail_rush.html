@@ -83,6 +83,8 @@
   const GRAV = 30, JUMP_V = 10.5, SUPER_JUMP_V = 14.5;
   const STAND_H = 1.6, ROLL_H = 0.7, PHW = 0.36, PHD = 0.35;
   const VIEW = 130;              // draw distance
+  const START_SPEED = 15, MAX_SPEED = 40;
+  const JET_TIME = 7, JET_Y = 6.5;
   const TRAIN_COLS = ["#5b8def", "#e85d5d", "#3dbb8a", "#e8b04a", "#9b7be8", "#8a96a8"];
 
   let best = load("railRush.best", 0);
@@ -90,15 +92,17 @@
   let paused = false;
   let P, obstacles, coins, powerups, buildings, popups;
   let genZ, nextBuildZ, laneReserved, distance, coinCount, t, dieT, shake, stumbleT, magnetT, superT, lastPowerZ, msg, msgT;
-  const cam = { x: 0, y: 3.6, z: -6.5 };
+  let jetT, landT, milestone;
+  const cam = { x: 0, y: 3.6, z: -6.5, fy: 0 };
 
   function reset() {
-    P = { lane: 1, x: 0, y: 0, z: 0, vy: 0, grounded: true, rollT: 0, phase: 0, v: 15, prevX: 0, prevLane: 1, prevZ: 0 };
+    P = { lane: 1, x: 0, y: 0, z: 0, vy: 0, grounded: true, rollT: 0, phase: 0, v: START_SPEED, prevX: 0, prevLane: 1, prevZ: 0, support: 0 };
     obstacles = []; coins = []; powerups = []; buildings = []; popups = [];
     genZ = 45; nextBuildZ = -10; laneReserved = [-1e9, -1e9, -1e9];
     distance = 0; coinCount = 0; t = 0; dieT = 0; shake = 0; stumbleT = 0; magnetT = 0; superT = 0; lastPowerZ = 0;
+    jetT = 0; landT = 0; milestone = 0;
     msg = ""; msgT = 0;
-    cam.x = 0; cam.y = 3.6; cam.z = -6.5;
+    cam.x = 0; cam.y = 3.6; cam.z = -6.5; cam.fy = 0;
     // A few coins on the opening straight.
     for (let i = 0; i < 8; i++) coins.push({ x: LANES[1], y: 0.8, z: 14 + i * 3, got: false });
     while (genZ < VIEW + 20) genRow();
@@ -196,7 +200,8 @@
     const emptyLanes = kinds.map((k, l) => k === "empty" ? l : -1).filter(l => l >= 0);
     if (emptyLanes.length && z - lastPowerZ > 420 && Math.random() < 0.5) {
       const l = emptyLanes[Math.floor(Math.random() * emptyLanes.length)];
-      powerups.push({ x: LANES[l], y: 1, z: z - 9, type: Math.random() < 0.5 ? "magnet" : "jump", got: false });
+      const r = Math.random();
+      powerups.push({ x: LANES[l], y: 1, z: z - 9, type: r < 0.36 ? "magnet" : r < 0.66 ? "jump" : "jetpack", got: false });
       lastPowerZ = z;
     }
 
@@ -225,19 +230,35 @@
     P.prevLane = P.lane; P.lane = nl;
   }
   function jump() {
-    if (state !== "run" || paused) return;
+    if (state !== "run" || paused || jetT > 0) return;
     if (P.grounded) {
       P.vy = superT > 0 ? SUPER_JUMP_V : JUMP_V;
       P.grounded = false; P.rollT = 0;
     }
   }
   function roll() {
-    if (state !== "run" || paused) return;
+    if (state !== "run" || paused || jetT > 0 || landT > 0) return;
     P.rollT = 0.62;
     if (!P.grounded) P.vy = Math.min(P.vy, -16);
   }
 
   function say(s) { msg = s; msgT = 1.4; }
+
+  function startJetpack() {
+    jetT = JET_TIME; landT = 0; P.rollT = 0;
+    say("Jetpack!");
+    // A weaving trail of sky coins along the flight path.
+    let lane = P.lane, nextSwitch = 12 + Math.random() * 10;
+    const end = P.z + P.v * JET_TIME - 12;
+    for (let z = P.z + 14; z < end; z += 2.4) {
+      nextSwitch -= 2.4;
+      if (nextSwitch <= 0) {
+        lane = Math.max(0, Math.min(2, lane + (Math.random() < 0.5 ? -1 : 1)));
+        nextSwitch = 12 + Math.random() * 14;
+      }
+      coins.push({ x: LANES[lane], y: JET_Y + 0.6, z, got: false });
+    }
+  }
 
   function crash() {
     if (state !== "run") return;
@@ -288,7 +309,12 @@
     }
     if (state !== "run" || paused) return;
 
-    P.v = Math.min(30, 15 + distance / 220);
+    // The run keeps getting faster, with a callout every 500 m.
+    P.v = Math.min(MAX_SPEED, START_SPEED + distance / 160);
+    if (Math.floor(distance / 500) > milestone) {
+      milestone = Math.floor(distance / 500);
+      say(P.v >= MAX_SPEED ? "Top speed!" : `Speed up! ${(P.v / START_SPEED).toFixed(1)}x`);
+    }
     const dz = P.v * dt;
     P.prevZ = P.z; P.prevX = P.x;
     P.z += dz; distance += dz;
@@ -300,7 +326,7 @@
 
     // Lane movement
     const tx = LANES[P.lane];
-    const step = 17 * dt;
+    const step = (17 + P.v * 0.35) * dt;
     P.x = Math.abs(tx - P.x) < step ? tx : P.x + Math.sign(tx - P.x) * step;
     if (P.x === tx) P.prevLane = P.lane;
 
@@ -309,9 +335,18 @@
       if (o.vz) { o.z0 += o.vz * dt; o.z1 += o.vz * dt; }
     }
 
-    // Vertical movement and what's underfoot
-    P.vy -= GRAV * dt;
-    P.y += P.vy * dt;
+    // Jetpack: fly high above everything, then glide down safely.
+    if (jetT > 0) {
+      jetT -= dt;
+      P.y += (JET_Y - P.y) * Math.min(1, dt * 3);
+      P.vy = 0; P.grounded = false; P.rollT = 0;
+      if (jetT <= 0) { landT = 1.6; say("Coming down!"); }
+    } else {
+      // Gentle glide while landing from a jetpack flight.
+      P.vy -= GRAV * (landT > 0 && !P.grounded ? 0.35 : 1) * dt;
+      P.y += P.vy * dt;
+    }
+    if (landT > 0) landT -= dt;
     let support = 0;
     for (const o of obstacles) {
       if (o.type !== "train" || Math.abs(P.x - o.x) > HALF + PHW) continue;
@@ -320,19 +355,27 @@
       }
       if (P.z + PHD > o.z0 && P.z - PHD < o.z1 && P.y >= TRAIN_H - 0.45) support = Math.max(support, TRAIN_H);
     }
-    if (P.y <= support) { P.y = support; P.vy = 0; P.grounded = true; }
-    else P.grounded = P.y - support < 0.02;
+    P.support = support;
+    if (jetT <= 0) {
+      if (P.y <= support) { P.y = support; P.vy = 0; P.grounded = true; }
+      else P.grounded = P.y - support < 0.02;
+    }
 
-    // Collisions
+    // Collisions (none while flying; while landing you pop up onto roofs instead of crashing)
     const y0 = P.y, y1 = P.y + bodyH();
     outer:
     for (const o of obstacles) {
+      if (jetT > 0) break;
       if (o.z1 < P.z - 3 || o.z0 > P.z + 3) continue;
       for (const c of colliders(o)) {
         const xo = P.x + PHW > c.x0 && P.x - PHW < c.x1;
         const zo = P.z + PHD > c.z0 && P.z - PHD < c.z1;
         const yo = y1 > c.y0 && y0 < c.y1;
         if (!(xo && zo && yo)) continue;
+        if (landT > 0) {
+          if (o.type === "train") { P.y = TRAIN_H; P.vy = 0; P.grounded = true; }
+          continue;
+        }
         // Clipping the top edge of something is forgiven: step up onto it.
         const gap = c.y1 - P.y;
         if (c.y0 === 0 && (gap <= 0.3 || (gap <= 0.45 && P.vy <= 0.5))) {
@@ -364,6 +407,7 @@
       if (Math.abs(p.x - P.x) < 0.9 && Math.abs(p.z - P.z) < 1 && P.y < 2) {
         p.got = true;
         if (p.type === "magnet") { magnetT = 10; say("Coin magnet!"); }
+        else if (p.type === "jetpack") { startJetpack(); }
         else { superT = 10; say("Super jump!"); }
       }
     }
@@ -423,7 +467,7 @@
   function drawScene() {
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     F = Math.min(H * 0.92, W * 1.15);
-    HOR = H * 0.8 - (cam.y) * F / 6.5;
+    HOR = H * 0.8 - (cam.y - cam.fy) * F / 6.5;
     if (shake > 0) ctx.translate((Math.random() - 0.5) * 14 * shake, (Math.random() - 0.5) * 14 * shake);
 
     // Sky
@@ -549,6 +593,19 @@
   function drawPower(pw) {
     const p = proj(pw.x, pw.y + Math.sin(t * 3) * 0.15, pw.z);
     const r = 0.45 * p[2];
+    if (pw.type === "jetpack") {
+      // Twin tanks with a flickering flame
+      ctx.fillStyle = "rgba(255,159,28,0.25)";
+      ctx.beginPath(); ctx.arc(p[0], p[1], r * 1.5, 0, Math.PI * 2); ctx.fill();
+      for (const sx of [-0.45, 0.45]) {
+        ctx.fillStyle = "#c9ccd6"; ctx.fillRect(p[0] + sx * r - r * 0.35, p[1] - r, r * 0.7, r * 1.6);
+        ctx.fillStyle = "#ff9f1c";
+        const fl = r * (0.5 + Math.random() * 0.4);
+        ctx.beginPath(); ctx.moveTo(p[0] + sx * r - r * 0.3, p[1] + r * 0.6); ctx.lineTo(p[0] + sx * r, p[1] + r * 0.6 + fl); ctx.lineTo(p[0] + sx * r + r * 0.3, p[1] + r * 0.6); ctx.closePath(); ctx.fill();
+      }
+      ctx.fillStyle = "#e85d5d"; ctx.fillRect(p[0] - r * 0.8, p[1] - r * 1.1, r * 1.6, r * 0.3);
+      return;
+    }
     ctx.fillStyle = pw.type === "magnet" ? "#e84393" : "#00b894";
     ctx.save(); ctx.translate(p[0], p[1]); ctx.rotate(t * 2);
     ctx.fillRect(-r, -r, r * 2, r * 2);
@@ -566,8 +623,9 @@
     let gy = 0;
     for (const o of obstacles) if (o.type === "train" && Math.abs(o.x - x) < HALF && z > o.z0 && z < o.z1 && y >= TRAIN_H - 0.05) gy = TRAIN_H;
     const sp = proj(x, gy, z);
-    ctx.fillStyle = "rgba(0,0,0,0.3)";
-    ctx.beginPath(); ctx.ellipse(sp[0], sp[1], 0.45 * sp[2], 0.12 * sp[2], 0, 0, Math.PI * 2); ctx.fill();
+    const ss = 1 / (1 + Math.max(0, y - gy) * 0.18);
+    ctx.fillStyle = `rgba(0,0,0,${0.3 * ss})`;
+    ctx.beginPath(); ctx.ellipse(sp[0], sp[1], 0.45 * sp[2] * ss, 0.12 * sp[2] * ss, 0, 0, Math.PI * 2); ctx.fill();
 
     if (state === "dying") {
       // Flat on the ground
@@ -581,8 +639,9 @@
       ctx.beginPath(); ctx.arc(p[0], p[1], 0.3 * p[2], t * 12, t * 12 + 3.5); ctx.stroke();
       return;
     }
+    const flying = jetT > 0 || (landT > 0 && !P.grounded);
     const air = !P.grounded;
-    const s = air ? 0.25 : Math.sin(P.phase);
+    const s = flying ? 0.08 : air ? 0.25 : Math.sin(P.phase);
     const blink = stumbleT > 0 && Math.floor(t * 10) % 2 === 0;
     if (blink) ctx.globalAlpha = 0.55;
     // legs
@@ -593,7 +652,19 @@
     drawBox(x + 0.3, x + 0.42, y + 0.75, y + 1.3, z - 0.08 + s * 0.25, z + 0.08 + s * 0.25, "#ff7a29");
     // torso + backpack
     drawBox(x - 0.3, x + 0.3, y + 0.7, y + 1.35, z - 0.15, z + 0.15, "#ff7a29");
-    drawBox(x - 0.22, x + 0.22, y + 0.8, y + 1.25, z - 0.3, z - 0.15, "#2b8a6e");
+    if (flying) {
+      // Jetpack tanks and exhaust in place of the backpack
+      for (const sx of [-0.15, 0.15]) {
+        const fl = 0.45 + Math.random() * 0.35;
+        const a = proj(x + sx - 0.1, y + 0.72, z - 0.3), b = proj(x + sx + 0.1, y + 0.72, z - 0.3), c = proj(x + sx, y + 0.72 - fl, z - 0.3);
+        ctx.fillStyle = "#ff9f1c"; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(c[0], c[1]); ctx.lineTo(b[0], b[1]); ctx.closePath(); ctx.fill();
+        const c2 = proj(x + sx, y + 0.72 - fl * 0.5, z - 0.3);
+        ctx.fillStyle = "#fff3b0"; ctx.beginPath(); ctx.moveTo(a[0] + (b[0] - a[0]) * 0.25, a[1]); ctx.lineTo(c2[0], c2[1]); ctx.lineTo(b[0] - (b[0] - a[0]) * 0.25, b[1]); ctx.closePath(); ctx.fill();
+        drawBox(x + sx - 0.1, x + sx + 0.1, y + 0.72, y + 1.3, z - 0.4, z - 0.16, "#b8bcc8");
+      }
+    } else {
+      drawBox(x - 0.22, x + 0.22, y + 0.8, y + 1.25, z - 0.3, z - 0.15, "#2b8a6e");
+    }
     // head + cap
     drawBox(x - 0.17, x + 0.17, y + 1.35, y + 1.68, z - 0.15, z + 0.15, "#f1c27d");
     drawBox(x - 0.19, x + 0.19, y + 1.6, y + 1.74, z - 0.17, z + 0.17, "#00a6c8");
@@ -608,13 +679,15 @@
     ctx.fillStyle = "#fff"; ctx.fillText(score, W - 18, 16);
     ctx.font = "800 20px system-ui, sans-serif"; ctx.fillStyle = "#ffd23f";
     ctx.fillText(`● ${coinCount}`, W - 18, 54);
+    ctx.font = "700 14px system-ui, sans-serif"; ctx.fillStyle = P.v >= MAX_SPEED ? "#ff7675" : "rgba(255,255,255,0.75)";
+    ctx.fillText(`${(P.v / START_SPEED).toFixed(1)}x SPEED`, W - 18, 84);
     ctx.textAlign = "left"; ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.font = "700 14px system-ui, sans-serif";
     ctx.fillText(`BEST ${best}`, 16, 18);
     let yy = 40;
-    for (const [label, v, col] of [["Magnet", magnetT, "#e84393"], ["Super jump", superT, "#00b894"]]) {
+    for (const [label, v, col, max] of [["Jetpack", jetT, "#ff9f1c", JET_TIME], ["Magnet", magnetT, "#e84393", 10], ["Super jump", superT, "#00b894", 10]]) {
       if (v <= 0) continue;
       ctx.fillStyle = "rgba(15,17,23,0.7)"; ctx.fillRect(16, yy, 130, 22);
-      ctx.fillStyle = col; ctx.fillRect(16, yy, 130 * (v / 10), 22);
+      ctx.fillStyle = col; ctx.fillRect(16, yy, 130 * (v / max), 22);
       ctx.fillStyle = "#fff"; ctx.fillText(label, 22, yy + 4);
       yy += 28;
     }
@@ -638,11 +711,15 @@
   function frame(now) {
     const dt = Math.min((now - last) / 1000, 1 / 30);
     last = now;
-    update(dt);
-    // Camera trails the runner.
+    // Small sub-steps so nothing gets skipped at top speed.
+    const n = Math.max(1, Math.ceil(P.v * dt / 0.4));
+    for (let i = 0; i < n; i++) update(dt / n);
+    // Camera trails the runner and rises with roofs and jetpack flights.
     const k = Math.min(1, dt * 8);
     cam.x += (P.x * 0.85 - cam.x) * k;
-    cam.y += (3.6 + P.y * 0.6 - cam.y) * Math.min(1, dt * 5);
+    const fyTarget = (jetT > 0 || (landT > 0 && !P.grounded)) ? P.y : P.support;
+    cam.fy += (fyTarget - cam.fy) * Math.min(1, dt * 4);
+    cam.y += (3.6 + cam.fy * 0.6 + (P.y - cam.fy) * 0.35 - cam.y) * Math.min(1, dt * 5);
     cam.z = P.z - 6.5;
     drawScene();
     if (state !== "start") hud();
