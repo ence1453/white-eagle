@@ -399,6 +399,249 @@
     font-size: 0.84rem;
   }
   .mod-list-item strong { color: var(--accent); display: block; margin-bottom: 2px; }
+
+  /* ================= Chaos modifier animations ================= */
+  /* Announcement banner */
+  .chaos-banner {
+    position: absolute; left: 50%; top: 50%; z-index: 40; pointer-events: none;
+    min-width: 62%; max-width: 90%; text-align: center;
+    background: rgba(15, 17, 23, 0.93); border: 2px solid var(--accent); border-radius: 12px; padding: 12px 18px;
+    box-shadow: 0 0 40px rgba(245, 158, 11, 0.45);
+    animation: bannerIn 1.8s cubic-bezier(.2,.9,.3,1.2) forwards;
+  }
+  .chaos-banner .cb-tag { font-size: 0.68rem; letter-spacing: 3px; color: var(--accent); font-weight: 800; }
+  .chaos-banner .cb-icon { font-size: 2.4rem; line-height: 1.15; display: inline-block; animation: cbIcon .65s ease-out; }
+  .chaos-banner .cb-name { font-size: 1.1rem; font-weight: 800; color: #fff; }
+  @keyframes bannerIn {
+    0% { transform: translate(-50%,-50%) scale(.35) rotate(-8deg); opacity: 0; }
+    14% { transform: translate(-50%,-50%) scale(1.07) rotate(1deg); opacity: 1; }
+    24% { transform: translate(-50%,-50%) scale(1) rotate(0); }
+    80% { transform: translate(-50%,-50%) scale(1); opacity: 1; }
+    100% { transform: translate(-50%,-62%) scale(.94); opacity: 0; }
+  }
+  @keyframes cbIcon { 0% { transform: scale(0) rotate(-120deg); } 70% { transform: scale(1.3) rotate(12deg); } 100% { transform: scale(1); } }
+
+  /* Whole-board effects */
+  .board-wrap.shake { animation: boardShake .6s; }
+  .board-wrap.shake-small { animation: boardShake .3s; }
+  @keyframes boardShake {
+    0%,100% { transform: translate(0,0); } 10% { transform: translate(-6px,3px); } 20% { transform: translate(6px,-4px); }
+    30% { transform: translate(-5px,-3px); } 40% { transform: translate(5px,4px); } 50% { transform: translate(-4px,2px); }
+    60% { transform: translate(4px,-2px); } 70% { transform: translate(-2px,2px); } 80% { transform: translate(2px,-1px); }
+  }
+  .board-wrap.flip { animation: boardFlip .75s ease-in-out; }
+  @keyframes boardFlip { 0% { transform: scaleX(1); } 50% { transform: scaleX(0.05); } 100% { transform: scaleX(1); } }
+  .board-wrap.sepia { animation: sepiaPulse 1.1s ease-in-out; }
+  @keyframes sepiaPulse { 0%,100% { filter: none; } 30%,70% { filter: sepia(.85) contrast(1.1); } }
+  .pieces-layer.chaos-move .piece { transition: transform .8s cubic-bezier(.45,0,.2,1), opacity .2s; }
+  .piece.no-slide { transition: none !important; }
+
+  /* Lasting board states: ice and truce tint the squares under the pieces */
+  .board-wrap::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 4; opacity: 0; transition: opacity .6s;
+  }
+  .board-wrap.iced::before {
+    opacity: 1;
+    background: linear-gradient(135deg, rgba(186,230,253,.38), rgba(255,255,255,.1) 40%, rgba(125,211,252,.32));
+    box-shadow: inset 0 0 40px rgba(186,230,253,.85);
+  }
+  .board-wrap.truce::before {
+    opacity: 1;
+    background: radial-gradient(circle, rgba(255,255,255,.2), rgba(255,255,255,.04));
+    box-shadow: inset 0 0 34px rgba(255,255,255,.7);
+  }
+
+  /* Lasting tile animations */
+  .tile-portal-a { --pc: var(--portal-a); }
+  .tile-portal-b { --pc: var(--portal-b); }
+  .tile-portal-a, .tile-portal-b { animation: portalPulse 1.8s ease-in-out infinite; }
+  @keyframes portalPulse { 0%,100% { box-shadow: inset 0 0 10px var(--pc); } 50% { box-shadow: inset 0 0 26px var(--pc), 0 0 10px var(--pc); } }
+  .tile-lava { animation: lavaGlow 1.2s ease-in-out infinite alternate; }
+  @keyframes lavaGlow { from { box-shadow: inset 0 0 10px #f97316; } to { box-shadow: inset 0 0 24px #fbbf24; } }
+  .tile-lava::before { animation: lavaBob 1.6s ease-in-out infinite; }
+  @keyframes lavaBob { 0%,100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-6%) scale(1.08); } }
+  .tile-mine::before { animation: mineBlink 1.6s ease-in-out infinite; }
+  @keyframes mineBlink { 0%,100% { opacity: .85; } 50% { opacity: .35; } }
+  .tile-trampoline::before { animation: springBob .9s ease-in-out infinite; }
+  @keyframes springBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-25%); } }
+  .tile-quicksand:not(.valid-move):not(.valid-capture)::after {
+    content: ""; position: absolute; inset: 22%; border-radius: 50%; border: 2px solid rgba(253,230,138,.65);
+    animation: sandRipple 1.7s ease-out infinite;
+  }
+  @keyframes sandRipple { 0% { transform: scale(.3); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
+  .fresh-tile::before { animation: tilePop .5s cubic-bezier(.2,1.6,.4,1) var(--fx-delay, 0s) both; }
+  @keyframes tilePop { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); } }
+  .quake-row { animation: quakeRow .7s ease-out; }
+  @keyframes quakeRow { 0% { filter: brightness(1); } 30% { filter: brightness(1.6) sepia(.6); } 100% { filter: brightness(1); } }
+
+  /* Lasting piece states */
+  .piece .piece-glyph { transition: transform .5s ease, filter .4s; }
+  .piece.ghosted .piece-glyph { opacity: .55; filter: drop-shadow(0 0 6px #a5f3fc); animation: ghostFloat 1.6s ease-in-out infinite; }
+  @keyframes ghostFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-7%); } }
+  .piece.giant .piece-glyph { transform: scale(1.22); filter: drop-shadow(0 0 5px #fbbf24); }
+  .piece.vampiric .piece-glyph { filter: drop-shadow(0 0 6px #dc2626); }
+  .piece.berserk .piece-glyph { filter: drop-shadow(0 0 7px #ef4444); animation: rage .45s ease-in-out infinite alternate; }
+  @keyframes rage { from { transform: rotate(-5deg) scale(1); } to { transform: rotate(5deg) scale(1.07); } }
+  .piece.holiday .piece-glyph { transform: scale(.78); filter: grayscale(.35); }
+  .piece.holiday::after { content: "🏖️"; position: absolute; font-size: .85rem; bottom: 2px; left: 2px; }
+  .piece.reversed .piece-glyph { transform: rotate(180deg); }
+  .piece.shielded .piece-glyph { filter: drop-shadow(0 0 6px #60a5fa); }
+
+  /* One-shot piece animations */
+  .piece.anim-pop .piece-glyph { animation: popBig .6s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes popBig { 0% { transform: scale(1); } 40% { transform: scale(1.6); } 100% { transform: scale(1); } }
+  .piece.anim-grow .piece-glyph { animation: growGiant .8s cubic-bezier(.2,1.5,.4,1); }
+  @keyframes growGiant { 0% { transform: scale(1); } 50% { transform: scale(1.75); } 100% { transform: scale(1.22); } }
+  .piece.anim-shrink .piece-glyph { animation: shrinkQ .7s ease-out; }
+  @keyframes shrinkQ { 0% { transform: scale(1); } 30% { transform: scale(1.25); } 100% { transform: scale(.78); } }
+  .piece.anim-spin .piece-glyph { animation: spinY .85s ease-in-out; }
+  @keyframes spinY { 0% { transform: rotateY(0); } 100% { transform: rotateY(1080deg); } }
+  .piece.anim-rise .piece-glyph { animation: riseUp .9s ease-out; }
+  @keyframes riseUp { 0% { transform: translateY(55%) scale(.5); opacity: 0; filter: drop-shadow(0 0 12px #a855f7); } 100% { transform: none; opacity: 1; } }
+  .piece.anim-teleport .piece-glyph { animation: teleIn .75s ease-out; }
+  @keyframes teleIn { 0% { transform: scale(0) rotate(-200deg); opacity: 0; } 60% { transform: scale(1.3) rotate(12deg); opacity: 1; } 100% { transform: none; } }
+  .piece.anim-shudder .piece-glyph { animation: shudder .45s linear; }
+  @keyframes shudder {
+    0%,100% { transform: translate(0,0); } 20% { transform: translate(-8%,4%); } 40% { transform: translate(8%,-4%); }
+    60% { transform: translate(-6%,-3%); } 80% { transform: translate(6%,3%); }
+  }
+  .piece.anim-blood .piece-glyph { animation: blood .9s ease-in-out; }
+  @keyframes blood { 0%,100% { filter: none; transform: scale(1); } 50% { filter: drop-shadow(0 0 12px #dc2626) brightness(1.25); transform: scale(1.25); } }
+  .piece.anim-cloned .piece-glyph { animation: clonedIn .9s ease-out; }
+  @keyframes clonedIn { 0%,55% { opacity: 0; transform: scale(.6); } 80% { opacity: 1; transform: scale(1.25); } 100% { transform: none; } }
+  .piece.anim-burn .piece-glyph { animation: burn .7s ease-in forwards; }
+  @keyframes burn {
+    0% { filter: none; }
+    50% { filter: drop-shadow(0 0 8px #f97316) sepia(1) saturate(4) hue-rotate(-30deg); }
+    100% { transform: translateY(30%) scale(.35); opacity: 0; }
+  }
+  .piece.anim-vanish .piece-glyph { animation: vanish .6s ease-in forwards; }
+  @keyframes vanish { to { transform: scale(0) rotate(-200deg); opacity: 0; } }
+
+  /* Square-sized effects */
+  .fx-board { position: absolute; inset: 0; pointer-events: none; }
+  .fx-emoji {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: clamp(1.1rem, 3.6vw, 1.8rem); animation: emojiFloat 1s ease-out var(--delay, 0s) both;
+  }
+  @keyframes emojiFloat {
+    0% { transform: translateY(10%) scale(.4); opacity: 0; } 25% { transform: translateY(-10%) scale(1.15); opacity: 1; }
+    100% { transform: translateY(-95%) scale(.9); opacity: 0; }
+  }
+  .fx-portal {
+    position: absolute; inset: -12%; border-radius: 50%;
+    background: conic-gradient(from 0deg, var(--pc), transparent 25%, var(--pc) 50%, transparent 75%, var(--pc));
+    -webkit-mask: radial-gradient(circle, transparent 20%, #000 23%, #000 62%, transparent 65%);
+    mask: radial-gradient(circle, transparent 20%, #000 23%, #000 62%, transparent 65%);
+    animation: portalOpen 1.3s ease-out var(--delay, 0s) both;
+  }
+  @keyframes portalOpen {
+    0% { transform: scale(0) rotate(0); opacity: 0; } 40% { transform: scale(1.3) rotate(360deg); opacity: 1; }
+    100% { transform: scale(.85) rotate(900deg); opacity: 0; }
+  }
+  .fx-meteor {
+    position: absolute; left: 22%; top: 22%; width: 56%; height: 56%; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #fff7c2, #f97316 45%, #7c2d12 72%);
+    box-shadow: 0 0 18px #f97316, 0 0 40px rgba(249,115,22,.6);
+    animation: meteorFall .5s cubic-bezier(.5,0,1,1) var(--delay, 0s) both;
+  }
+  .fx-meteor::before {
+    content: ""; position: absolute; left: 30%; bottom: 50%; width: 40%; height: 280%; transform-origin: bottom center;
+    transform: rotate(34deg); border-radius: 50% 50% 0 0;
+    background: linear-gradient(to top, rgba(253,186,116,.95), rgba(253,186,116,0));
+  }
+  @keyframes meteorFall { 0% { transform: translate(260%,-380%) scale(.7); opacity: 0; } 10% { opacity: 1; } 100% { transform: translate(0,0) scale(1); opacity: 1; } }
+  .fx-pillar {
+    position: absolute; left: 18%; right: 18%; bottom: 8%; height: 320%; transform-origin: bottom; border-radius: 40% 40% 10% 10%;
+    background: linear-gradient(to top, rgba(253,224,71,.95), rgba(253,224,71,.4) 60%, rgba(253,224,71,0));
+    animation: pillar .9s ease-out var(--delay, 0s) both;
+  }
+  .fx-pillar.purple { background: linear-gradient(to top, rgba(168,85,247,.95), rgba(168,85,247,.4) 60%, rgba(168,85,247,0)); }
+  @keyframes pillar { 0% { transform: scaleY(0); opacity: .2; } 35% { transform: scaleY(1); opacity: 1; } 100% { transform: scaleY(1.1); opacity: 0; } }
+  .fx-bubble {
+    position: absolute; inset: 4%; border-radius: 50%; border: 3px solid var(--pc, #60a5fa);
+    box-shadow: 0 0 14px var(--pc, #60a5fa), inset 0 0 14px var(--pc, #60a5fa);
+    animation: bubble 1s ease-out var(--delay, 0s) both;
+  }
+  @keyframes bubble { 0% { transform: scale(.2); opacity: 0; } 40% { transform: scale(1.15); opacity: 1; } 70% { transform: scale(.95); } 100% { transform: scale(1.45); opacity: 0; } }
+  .fx-reticle { position: absolute; inset: 8%; border: 3px solid #ef4444; border-radius: 50%; animation: reticle .7s ease-in var(--delay, 0s) both; }
+  .fx-reticle::before, .fx-reticle::after {
+    content: ""; position: absolute; background: #ef4444; left: 50%; top: -18%; width: 3px; height: 136%; margin-left: -1.5px;
+  }
+  .fx-reticle::after { transform: rotate(90deg); }
+  @keyframes reticle { 0% { transform: scale(2.3) rotate(-90deg); opacity: 0; } 55% { opacity: 1; } 100% { transform: scale(1) rotate(0); opacity: 1; } }
+  .fx-sand {
+    position: absolute; inset: 5%; border-radius: 50%;
+    background: conic-gradient(#fbbf24, #b45309, #fde68a, #92400e, #fbbf24);
+    animation: sandSwirl 1s ease-in var(--delay, 0s) both;
+  }
+  @keyframes sandSwirl { 0% { transform: scale(1.3) rotate(0); opacity: 0; } 30% { opacity: .9; } 100% { transform: scale(.1) rotate(540deg); opacity: 0; } }
+  .fx-drop {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: clamp(1rem, 3vw, 1.5rem); animation: dropIn .65s cubic-bezier(.5,0,.5,1.5) var(--delay, 0s) both;
+  }
+  @keyframes dropIn {
+    0% { transform: translateY(-320%); opacity: 0; } 55% { transform: translateY(0) scaleY(.75); opacity: 1; }
+    75% { transform: translateY(-14%) scaleY(1.05); } 100% { transform: translateY(0); opacity: 0; }
+  }
+  .fx-drop.spring { animation-name: springIn; }
+  @keyframes springIn {
+    0% { transform: scaleY(0); opacity: 0; } 40% { transform: scaleY(1.6) translateY(-20%); opacity: 1; }
+    65% { transform: scaleY(.7); } 85% { transform: scaleY(1.15); } 100% { transform: scaleY(1); opacity: 0; }
+  }
+  .fx-plume {
+    position: absolute; left: 50%; top: 55%; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%;
+    background: #f97316; box-shadow: 0 0 8px #fbbf24; animation: plume .9s ease-out var(--delay, 0s) both;
+  }
+  @keyframes plume { 0% { transform: translate(0,0) scale(1.4); opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) scale(.3); opacity: 0; } }
+  .fx-puff.purple { background: radial-gradient(circle, rgba(192,132,252,.9) 0%, rgba(126,34,206,.6) 55%, rgba(126,34,206,0) 75%); }
+  .fx-rainbow {
+    position: absolute; inset: -6%; border-radius: 50%;
+    background: conic-gradient(#ef4444, #f97316, #eab308, #22c55e, #06b6d4, #3b82f6, #d946ef, #ef4444);
+    -webkit-mask: radial-gradient(circle, transparent 38%, #000 41%, #000 60%, transparent 63%);
+    mask: radial-gradient(circle, transparent 38%, #000 41%, #000 60%, transparent 63%);
+    animation: rainbow .9s linear var(--delay, 0s) both;
+  }
+  @keyframes rainbow { 0% { transform: rotate(0) scale(.3); opacity: 0; } 30% { opacity: .9; } 100% { transform: rotate(720deg) scale(1.25); opacity: 0; } }
+  .piece.fx-clone { opacity: .65; filter: drop-shadow(0 0 8px #a78bfa); transition: transform .5s ease-out, opacity .5s; z-index: 1; }
+
+  /* Board-sized effects */
+  .fx-frost {
+    background: linear-gradient(100deg, transparent 0%, rgba(224,242,254,0) 30%, rgba(224,242,254,.9) 45%, rgba(186,230,253,.45) 55%, transparent 70%);
+    background-size: 250% 100%; animation: frostSweep 1.05s ease-out forwards;
+  }
+  @keyframes frostSweep { 0% { background-position: 100% 0; } 100% { background-position: 0% 0; opacity: .25; } }
+  .fx-fogroll {
+    background: linear-gradient(to bottom, rgba(148,163,184,0), rgba(148,163,184,.8) 40%, rgba(100,116,139,.9) 60%, rgba(148,163,184,0));
+    background-size: 100% 250%; animation: fogRoll 1.3s ease-in-out forwards;
+  }
+  @keyframes fogRoll { 0% { background-position: 0 100%; opacity: 0; } 20% { opacity: 1; } 100% { background-position: 0 0%; opacity: 0; } }
+  .fx-gravity {
+    background: linear-gradient(to top, transparent, rgba(168,85,247,.45) 45%, rgba(236,72,153,.35) 55%, transparent);
+    background-size: 100% 250%; animation: gravitySweep 1s ease-in-out forwards;
+  }
+  @keyframes gravitySweep { 0% { background-position: 0 0%; } 100% { background-position: 0 100%; opacity: 0; } }
+  .fx-flashwhite { background: radial-gradient(circle, rgba(255,255,255,.85), rgba(255,255,255,0) 70%); animation: whiteFlash 1s ease-out forwards; }
+  @keyframes whiteFlash { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
+  .fx-rewind {
+    display: flex; align-items: center; justify-content: center; font-size: clamp(3rem, 12vw, 5rem);
+    background: rgba(120, 90, 50, .3); animation: whiteFlash 1.1s ease-in-out forwards;
+  }
+  .fx-rewind span { animation: rewindSpin 1.1s ease-in-out forwards; }
+  @keyframes rewindSpin { 0% { transform: rotate(0) scale(.5); } 100% { transform: rotate(-720deg) scale(1.1); } }
+  .fx-bigicon {
+    display: flex; align-items: center; justify-content: center; font-size: clamp(3rem, 12vw, 5rem);
+    animation: bigIcon 1.2s ease-out forwards;
+  }
+  @keyframes bigIcon { 0% { transform: scale(.3); opacity: 0; } 30% { transform: scale(1.1); opacity: .95; } 100% { transform: scale(1.4) translateY(-20%); opacity: 0; } }
+  .fx-wave {
+    position: absolute; left: 50%; top: 50%; width: 20%; height: 20%; margin: -10% 0 0 -10%; border-radius: 50%;
+    border: 4px solid rgba(147,197,253,.9); box-shadow: 0 0 20px rgba(147,197,253,.7);
+  }
+  .fx-wave.out { animation: waveOut .85s ease-out both; }
+  .fx-wave.in { animation: waveIn .85s ease-in both; border-color: rgba(244,114,182,.9); box-shadow: 0 0 20px rgba(244,114,182,.7); }
+  @keyframes waveOut { 0% { transform: scale(.2); opacity: 1; } 100% { transform: scale(7); opacity: 0; } }
+  @keyframes waveIn { 0% { transform: scale(7); opacity: 0; } 30% { opacity: 1; } 100% { transform: scale(.2); opacity: 0; } }
 </style>
 </head>
 <body>
@@ -666,15 +909,9 @@ const MODIFIERS = [
         }
       }
       shuffle(targets);
-      targets.slice(0, 3).forEach(([r, c]) => {
-        const sq = document.getElementById(`sq-${r}-${c}`);
-        if (sq) {
-          sq.classList.remove('tile-airstrike');
-          void sq.offsetWidth;
-          sq.classList.add('tile-airstrike');
-        }
+      chaosMeta.targets = targets.slice(0, 3);
+      chaosMeta.targets.forEach(([r, c]) => {
         if (board[r][c]) {
-          spawnFx('boom', r, c);
           logEvent(`💥 Air Raid destroyed ${board[r][c].color.toUpperCase()} ${board[r][c].type} at ${coordName(r, c)}!`, true);
           board[r][c] = null;
         }
@@ -832,7 +1069,6 @@ const MODIFIERS = [
       shuffle(mid);
       mid.slice(0, 2).forEach(([r, c]) => {
         if (!board[r][c] || board[r][c].type !== 'K') {
-          if (board[r][c]) spawnFx('boom', r, c);
           board[r][c] = null;
           lavaTiles.add(`${r},${c}`);
         }
@@ -978,6 +1214,10 @@ function render() {
       }
     }
   }
+  paintTileFx();
+  const wrap = document.getElementById('boardWrap');
+  wrap.classList.toggle('iced', iceFloorTurns > 0);
+  wrap.classList.toggle('truce', truceTurns > 0);
 
   const layer = document.getElementById('piecesLayer');
   const activeIds = new Set();
@@ -1010,6 +1250,13 @@ function render() {
       el.classList.toggle('trapped', p.trapped > 0);
       el.classList.toggle('buffed', p.vampire || p.ghost || p.giant);
       el.classList.toggle('shielded', !!p.shield);
+      // Lasting looks for active modifiers
+      el.classList.toggle('ghosted', !!p.ghost);
+      el.classList.toggle('giant', !!p.giant && p.type === 'P');
+      el.classList.toggle('vampiric', !!p.vampire);
+      el.classList.toggle('berserk', berserkKnightsTurns > 0 && p.type === 'N');
+      el.classList.toggle('holiday', queenNerfTurns > 0 && p.type === 'Q');
+      el.classList.toggle('reversed', reversePawnTurns > 0 && p.type === 'P' && !p.giant);
 
       if (fogTurns > 0 && p.color === 'b' && !isVisibleToWhite(r, c)) {
         el.style.opacity = '0';
@@ -1345,7 +1592,8 @@ function advanceTurn() {
   render();
 
   if (turn === 'b' && !gameOver) {
-    setTimeout(makeBotMove, 450);
+    // Give a chaos animation time to play before the bot moves.
+    setTimeout(makeBotMove, 450 + Math.max(0, chaosBusyUntil - performance.now()));
   }
 }
 
@@ -1458,13 +1706,406 @@ function makeBotMove() {
   executeMove(chosen.fr, chosen.fc, chosen.tr, chosen.tc);
 }
 
-function triggerRandomModifier() {
-  const mod = MODIFIERS[Math.floor(Math.random() * MODIFIERS.length)];
-  document.getElementById('modTitle').textContent = `⚡ ${mod.name}`;
+/* ================= Chaos modifier animations ================= */
+const MOD_ICONS = ['🌀','☄️','🧊','🌍','⏳','⬆️','💂','🧛','👻','🗿','✈️','🔄','🧲','⚔️','⏪',
+                   '🌫️','🪞','🧬','🕊️','👑','🛡️','💣','⏫','🌋','🔰','🙃','🏖️','💀','💥','🎰'];
+let tileFx = new Map();        // temporary square classes that survive re-renders
+let chaosBusyUntil = 0;        // bot waits until the chaos animation has played
+let chaosMeta = {};            // extra info a modifier hands to its animation
+let fxEpoch = 0;               // bumped on reset so stale timers do nothing
+
+function later(ms, fn) {
+  const e = fxEpoch;
+  setTimeout(() => { if (e === fxEpoch) fn(); }, ms);
+}
+function fxVisible(r, c) { return !(fogTurns > 0 && !isVisibleToWhite(r, c)); }
+
+function markTile(r, c, cls, ms, delay = 0) {
+  tileFx.set(`${r},${c}:${cls}`, { r, c, cls, delay, until: performance.now() + delay + ms });
+}
+function paintTileFx() {
+  const now = performance.now();
+  for (const [key, t] of tileFx) {
+    if (now > t.until) { tileFx.delete(key); continue; }
+    const sq = document.getElementById(`sq-${t.r}-${t.c}`);
+    if (!sq) continue;
+    sq.classList.add(t.cls);
+    sq.style.setProperty('--fx-delay', `${t.delay}ms`);
+  }
+}
+
+function fxSquare(r, c, html, ms = 1000, delay = 0, vars = {}) {
+  if (!fxVisible(r, c)) return null;
+  const el = document.createElement('div');
+  el.className = 'fx';
+  el.style.left = (c * 12.5) + '%';
+  el.style.top = (r * 12.5) + '%';
+  el.style.setProperty('--delay', `${delay}ms`);
+  for (const k in vars) el.style.setProperty(k, vars[k]);
+  el.innerHTML = html;
+  document.getElementById('fxLayer').appendChild(el);
+  later(ms + delay, () => el.remove());
+  return el;
+}
+function fxBoard(cls, html = '', ms = 1100) {
+  const el = document.createElement('div');
+  el.className = 'fx-board ' + cls;
+  el.innerHTML = html;
+  document.getElementById('fxLayer').appendChild(el);
+  later(ms, () => el.remove());
+  return el;
+}
+function boardClass(cls, ms) {
+  const wrap = document.getElementById('boardWrap');
+  wrap.classList.remove(cls);
+  void wrap.offsetWidth;
+  wrap.classList.add(cls);
+  later(ms, () => wrap.classList.remove(cls));
+}
+function pieceAnim(id, cls, ms = 800, delay = 0) {
+  later(delay, () => {
+    const el = pieceElements.get(id);
+    if (!el) return;
+    el.classList.remove(cls);
+    void el.offsetWidth;
+    el.classList.add(cls);
+    later(ms, () => el.classList.remove(cls));
+  });
+}
+function emojiAt(r, c, emoji, delay = 0) {
+  fxSquare(r, c, `<div class="fx-emoji">${emoji}</div>`, 1000, delay);
+}
+function plumeAt(r, c, delay = 0, purple = false) {
+  let html = '';
+  for (let i = 0; i < 12; i++) {
+    const dx = Math.round((Math.random() - 0.5) * 50), dy = -Math.round(40 + Math.random() * 60);
+    html += `<div class="fx-plume" style="--dx:${dx}px; --dy:${dy}px; animation-delay:${delay + Math.round(Math.random() * 120)}ms;${purple ? 'background:#a855f7; box-shadow:0 0 8px #c084fc;' : ''}"></div>`;
+  }
+  fxSquare(r, c, html, 1100, 0);
+}
+function smokeAt(r, c, delay = 0) {
+  let html = '';
+  for (let i = 0; i < 5; i++) {
+    const dx = Math.round((Math.random() - 0.5) * 60), dy = -Math.round(60 + Math.random() * 60);
+    html += `<div class="fx-puff purple" style="--dx:${dx}%; --dy:${dy}%; animation-delay:${delay + i * 70}ms"></div>`;
+  }
+  fxSquare(r, c, html, 1200, 0);
+}
+// A see-through copy of a piece that glides from one square to another.
+function cloneGlide(from, to, piece, delay = 0) {
+  if (!fxVisible(from[0], from[1]) && !fxVisible(to[0], to[1])) return;
+  const el = document.createElement('div');
+  el.className = `piece fx-clone ${piece.color === 'w' ? 'white' : 'black'}`;
+  el.innerHTML = `<span class="piece-glyph">${getPieceVisualHTML(piece)}</span>`;
+  el.style.transform = `translate(${from[1] * 100}%, ${from[0] * 100}%)`;
+  document.getElementById('fxLayer').appendChild(el);
+  later(delay + 20, () => { el.style.transform = `translate(${to[1] * 100}%, ${to[0] * 100}%)`; });
+  later(delay + 650, () => { el.style.opacity = '0'; });
+  later(delay + 1100, () => el.remove());
+}
+
+// Board state before/after a modifier, so each animation knows exactly what changed.
+function snapshotState() {
+  const pos = new Map();
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const p = board[r][c];
+      if (p) pos.set(p.id, { r, c, type: p.type, color: p.color, vampire: !!p.vampire, ghost: !!p.ghost, giant: !!p.giant, shield: !!p.shield, piece: p });
+    }
+  }
+  return {
+    pos,
+    tiles: { craters: new Set(craters), quicksand: new Set(quicksand), landmines: new Set(landmines), trampolines: new Set(trampolines), lavaTiles: new Set(lavaTiles) },
+    portals: portals ? JSON.stringify(portals) : null
+  };
+}
+function diffState(a, b) {
+  const d = { before: a, moved: [], added: [], removed: [], retyped: [], flags: { vampire: [], ghost: [], giant: [], shield: [] }, tiles: {}, newPortals: null };
+  for (const [id, nb] of b.pos) {
+    const na = a.pos.get(id);
+    if (!na) { d.added.push({ id, ...nb }); continue; }
+    if (na.r !== nb.r || na.c !== nb.c) d.moved.push({ id, from: [na.r, na.c], to: [nb.r, nb.c], ...nb });
+    if (na.type !== nb.type) d.retyped.push({ id, ...nb, fromType: na.type });
+    for (const f of ['vampire', 'ghost', 'giant', 'shield']) if (!na[f] && nb[f]) d.flags[f].push({ id, ...nb });
+  }
+  for (const [id, na] of a.pos) if (!b.pos.has(id)) d.removed.push({ id, ...na });
+  for (const k of Object.keys(b.tiles)) {
+    d.tiles[k] = [...b.tiles[k]].filter(x => !a.tiles[k].has(x)).map(s => s.split(',').map(Number));
+  }
+  if (b.portals && b.portals !== a.portals) d.newPortals = JSON.parse(b.portals);
+  return d;
+}
+
+// Pieces removed by a modifier keep their element briefly so they can be blown up or fade out.
+function doomPiece(x, delay, style) {
+  if (!x.el) return;
+  later(delay, () => {
+    if (style === 'burn') x.el.classList.add('anim-burn');
+    else if (style === 'vanish') x.el.classList.add('anim-vanish');
+    else spawnFx('boom', x.r, x.c);
+  });
+  later(delay + (style === 'boom' ? 120 : 650), () => {
+    if (style === 'burn') spawnFx('boom', x.r, x.c);
+    x.el.remove();
+  });
+}
+
+const MOD_ANIMS = [
+  /* 1 Wormholes */ { post: d => {
+    if (!d.newPortals) return;
+    [['a', '#06b6d4'], ['b', '#d946ef']].forEach(([k, col], i) => {
+      const [r, c] = d.newPortals[k];
+      fxSquare(r, c, '<div class="fx-portal"></div>', 1300, i * 180, { '--pc': col });
+      fxSquare(r, c, '<div class="fx-bubble"></div>', 1000, i * 180 + 250, { '--pc': col });
+    });
+  } },
+  /* 2 Meteor Shower */ { post: d => {
+    d.tiles.craters.forEach(([r, c], i) => {
+      const delay = i * 180;
+      fxSquare(r, c, '<div class="fx-meteor"></div>', 520, delay);
+      markTile(r, c, 'fresh-tile', 900, delay + 470);
+      later(delay + 480, () => { spawnFx('boom', r, c); spawnFx('dust', r, c); boardClass('shake-small', 320); });
+    });
+  } },
+  /* 3 Ice Floor */ { post: () => {
+    fxBoard('fx-frost', '', 1100);
+    for (let i = 0; i < 9; i++) emojiAt(Math.floor(Math.random() * 8), Math.floor(Math.random() * 8), '❄️', Math.round(Math.random() * 600));
+  } },
+  /* 4 Earthquake */ { post: d => {
+    boardClass('shake', 650);
+    const rows = [...new Set(d.moved.map(m => m.to[0]))];
+    rows.forEach(r => { for (let c = 0; c < 8; c++) markTile(r, c, 'quake-row', 800); });
+    paintTileFx();
+    d.moved.forEach(m => pieceAnim(m.id, 'anim-shudder', 450, 800));
+  } },
+  /* 5 Quicksand */ { post: d => {
+    d.tiles.quicksand.forEach(([r, c], i) => {
+      fxSquare(r, c, '<div class="fx-sand"></div>', 1000, i * 150);
+      markTile(r, c, 'fresh-tile', 900, i * 150 + 450);
+    });
+  } },
+  /* 6 Pawn Promotion Surge */ { post: d => {
+    d.retyped.forEach((x, i) => {
+      fxSquare(x.r, x.c, '<div class="fx-pillar"></div>', 900, i * 200);
+      pieceAnim(x.id, 'anim-pop', 600, i * 200 + 250);
+    });
+  } },
+  /* 7 Royal Bodyguard */ { post: d => {
+    ['w', 'b'].forEach(color => {
+      const k = findKing(color);
+      if (!k) return;
+      fxSquare(k.r, k.c, '<div class="fx-bubble"></div>', 1000, 0, { '--pc': '#fbbf24' });
+      emojiAt(k.r, k.c, '💂');
+    });
+    d.added.forEach(x => pieceAnim(x.id, 'anim-rise', 900));
+  } },
+  /* 8 Vampire Blades */ { post: d => {
+    d.flags.vampire.forEach((x, i) => {
+      pieceAnim(x.id, 'anim-blood', 900, i * 60);
+      emojiAt(x.r, x.c, '🦇', i * 60);
+    });
+  } },
+  /* 9 Ghost Form */ { post: d => {
+    d.flags.ghost.forEach((x, i) => {
+      emojiAt(x.r, x.c, '👻', i * 80);
+      fxSquare(x.r, x.c, '<div class="fx-bubble"></div>', 1000, i * 80, { '--pc': '#a5f3fc' });
+    });
+  } },
+  /* 10 Giant Pawn */ { post: d => {
+    d.flags.giant.forEach(x => {
+      pieceAnim(x.id, 'anim-grow', 800);
+      spawnFx('dust', x.r, x.c);
+    });
+  } },
+  /* 11 Air Raid */ { post: (d, doomed) => {
+    const targets = chaosMeta.targets || [];
+    targets.forEach(([r, c], i) => {
+      const delay = i * 160;
+      fxSquare(r, c, '<div class="fx-reticle"></div>', 700, delay);
+      later(delay + 680, () => {
+        spawnFx('boom', r, c);
+        markTile(r, c, 'tile-airstrike', 650);
+        paintTileFx();
+        boardClass('shake-small', 320);
+      });
+      doomed.filter(x => x.r === r && x.c === c).forEach(x => doomPiece(x, delay + 680, 'boom'));
+    });
+    return true;
+  } },
+  /* 12 Swap Meet */ { post: d => {
+    d.moved.forEach(m => {
+      fxSquare(m.from[0], m.from[1], '<div class="fx-bubble"></div>', 900, 0, { '--pc': '#c084fc' });
+      fxSquare(m.to[0], m.to[1], '<div class="fx-bubble"></div>', 900, 600, { '--pc': '#c084fc' });
+      emojiAt(m.to[0], m.to[1], '🔄', 650);
+    });
+  } },
+  /* 13 Magnetic Pull */ { post: d => {
+    fxBoard('', '<div class="fx-wave in"></div><div class="fx-wave in" style="animation-delay:.18s"></div><div class="fx-wave in" style="animation-delay:.36s"></div>', 1300);
+    d.moved.forEach(m => pieceAnim(m.id, 'anim-shudder', 450, 820));
+  } },
+  /* 14 Berserk Knights */ { post: () => {
+    getPiecesByFilter(p => p.type === 'N').forEach((x, i) => {
+      pieceAnim(x.piece.id, 'anim-pop', 600, i * 70);
+      emojiAt(x.r, x.c, '💢', i * 70);
+    });
+  } },
+  /* 15 Time Rewind */ { post: (d, doomed) => {
+    boardClass('sepia', 1100);
+    fxBoard('fx-rewind', '<span>⏪</span>', 1100);
+    doomed.forEach(x => doomPiece(x, 0, 'vanish'));
+    d.added.forEach(x => pieceAnim(x.id, 'anim-rise', 900));
+    return true;
+  } },
+  /* 16 Fog of War */ { post: () => { fxBoard('fx-fogroll', '', 1300); } },
+  /* 17 Mirror Realm */ { post: () => {
+    boardClass('flip', 750);
+    fxBoard('fx-bigicon', '<span>🪞</span>', 1200);
+  } },
+  /* 18 Clone Army */ { post: d => {
+    d.added.forEach(x => {
+      // Find the original it was copied from: same side and type, next door.
+      let src = null;
+      for (const [, o] of d.before.pos) {
+        if (o.color === x.color && o.type === x.type && Math.max(Math.abs(o.r - x.r), Math.abs(o.c - x.c)) === 1) { src = o; break; }
+      }
+      if (src) {
+        cloneGlide([src.r, src.c], [x.r, x.c], x.piece);
+        pieceAnim(src.piece.id, 'anim-pop', 600);
+      }
+      pieceAnim(x.id, 'anim-cloned', 900);
+      emojiAt(x.r, x.c, '🧬', 300);
+    });
+  } },
+  /* 19 Pacifist Truce */ { post: () => {
+    fxBoard('fx-flashwhite', '', 1000);
+    fxBoard('fx-bigicon', '<span>🕊️</span>', 1300);
+  } },
+  /* 20 King's Teleport */ {
+    pre: d => d.moved.forEach(m => { const el = pieceElements.get(m.id); if (el) el.classList.add('no-slide'); }),
+    post: d => {
+      d.moved.forEach(m => {
+        pieceAnim(m.id, 'anim-teleport', 750);
+        fxSquare(m.from[0], m.from[1], '<div class="fx-bubble"></div>', 900, 0, { '--pc': '#22d3ee' });
+        fxSquare(m.to[0], m.to[1], '<div class="fx-bubble"></div>', 900, 120, { '--pc': '#22d3ee' });
+        if (m.type === 'K') emojiAt(m.to[0], m.to[1], '✨', 150);
+      });
+      later(80, () => d.moved.forEach(m => { const el = pieceElements.get(m.id); if (el) el.classList.remove('no-slide'); }));
+    }
+  },
+  /* 21 Royal Guard Ascension */ { post: d => {
+    d.retyped.filter(x => x.type === 'G').forEach(x => {
+      fxSquare(x.r, x.c, '<div class="fx-pillar"></div>', 900);
+      pieceAnim(x.id, 'anim-pop', 600, 250);
+      emojiAt(x.r, x.c, '👑', 200);
+    });
+    d.added.forEach((x, i) => pieceAnim(x.id, 'anim-rise', 900, 300 + i * 80));
+  } },
+  /* 22 Landmine Field */ { post: d => {
+    d.tiles.landmines.forEach(([r, c], i) => {
+      fxSquare(r, c, '<div class="fx-drop">💣</div>', 650, i * 140);
+      markTile(r, c, 'fresh-tile', 900, i * 140 + 450);
+    });
+  } },
+  /* 23 Trampoline Tiles */ { post: d => {
+    d.tiles.trampolines.forEach(([r, c], i) => {
+      fxSquare(r, c, '<div class="fx-drop spring">⏫</div>', 750, i * 150);
+      markTile(r, c, 'fresh-tile', 900, i * 150 + 500);
+    });
+  } },
+  /* 24 Volcanic Eruption */ { post: (d, doomed) => {
+    boardClass('shake', 650);
+    d.tiles.lavaTiles.forEach(([r, c], i) => {
+      plumeAt(r, c, i * 150);
+      markTile(r, c, 'fresh-tile', 900, i * 150 + 200);
+    });
+    doomed.forEach(x => doomPiece(x, 0, 'burn'));
+    return true;
+  } },
+  /* 25 Aegis Shield */ { post: d => {
+    d.flags.shield.forEach((x, i) => {
+      fxSquare(x.r, x.c, '<div class="fx-bubble"></div>', 1000, i * 150, { '--pc': '#60a5fa' });
+      pieceAnim(x.id, 'anim-pop', 600, i * 150 + 200);
+    });
+  } },
+  /* 26 Reverse Gravity */ { post: () => {
+    // Pawns flip upside down through their lasting "reversed" look.
+    fxBoard('fx-gravity', '', 1000);
+  } },
+  /* 27 Queen's Humble Holiday */ { post: () => {
+    getPiecesByFilter(p => p.type === 'Q').forEach(x => {
+      pieceAnim(x.piece.id, 'anim-shrink', 700);
+      emojiAt(x.r, x.c, '🏖️', 150);
+    });
+  } },
+  /* 28 Necromancy */ { post: d => {
+    d.added.forEach((x, i) => {
+      fxSquare(x.r, x.c, '<div class="fx-pillar purple"></div>', 900, i * 200);
+      smokeAt(x.r, x.c, i * 200);
+      pieceAnim(x.id, 'anim-rise', 900, i * 200);
+    });
+  } },
+  /* 29 Shockwave Repulsion */ { post: d => {
+    fxBoard('', '<div class="fx-wave out"></div><div class="fx-wave out" style="animation-delay:.15s"></div><div class="fx-wave out" style="animation-delay:.3s"></div>', 1300);
+    boardClass('shake-small', 320);
+    d.moved.forEach(m => pieceAnim(m.id, 'anim-shudder', 450, 820));
+  } },
+  /* 30 Chaos Roulette */ { post: d => {
+    const ids = new Set(d.retyped.map(x => x.id));
+    for (const [id, o] of d.before.pos) if (['N', 'B', 'R'].includes(o.type)) ids.add(id);
+    let i = 0;
+    for (const id of ids) {
+      const x = getPiecesByFilter(p => p.id === id)[0];
+      if (!x) continue;
+      pieceAnim(id, 'anim-spin', 850, i * 50);
+      fxSquare(x.r, x.c, '<div class="fx-rainbow"></div>', 900, i * 50);
+      i++;
+    }
+  } }
+];
+
+function showChaosBanner(idx, mod) {
+  const wrap = document.getElementById('boardWrap');
+  wrap.querySelectorAll('.chaos-banner').forEach(b => b.remove());
+  const el = document.createElement('div');
+  el.className = 'chaos-banner';
+  const name = mod.name.replace(/^\d+\.\s*/, '');
+  el.innerHTML = `<div class="cb-tag">CHAOS EVENT</div><div class="cb-icon">${MOD_ICONS[idx] || '⚡'}</div><div class="cb-name">${name}</div>`;
+  wrap.appendChild(el);
+  later(1850, () => el.remove());
+}
+
+function triggerRandomModifier(forceIdx) {
+  const idx = Number.isInteger(forceIdx) ? forceIdx : Math.floor(Math.random() * MODIFIERS.length);
+  const mod = MODIFIERS[idx];
+  document.getElementById('modTitle').textContent = `${MOD_ICONS[idx] || '⚡'} ${mod.name}`;
   document.getElementById('modDesc').textContent = mod.desc;
   logEvent(`🎲 CHAOS EVENT: ${mod.name} — ${mod.desc}`, true);
+
+  chaosMeta = {};
+  const before = snapshotState();
   mod.apply();
+  const d = diffState(before, snapshotState());
+  const anim = MOD_ANIMS[idx] || {};
+
+  // Keep the elements of removed pieces on screen so their exit can be animated.
+  const doomed = d.removed.map(x => {
+    const el = pieceElements.get(x.id);
+    if (el) pieceElements.delete(x.id);
+    return { ...x, el };
+  });
+
+  const layer = document.getElementById('piecesLayer');
+  if (d.moved.length) {
+    layer.classList.add('chaos-move');
+    later(950, () => layer.classList.remove('chaos-move'));
+  }
+  if (anim.pre) anim.pre(d);
   render();
+  showChaosBanner(idx, mod);
+  let handled = false;
+  try { handled = anim.post ? !!anim.post(d, doomed) : false; } catch (e) { console.error(e); }
+  if (!handled) doomed.forEach(x => doomPiece(x, 0, 'boom'));
+  chaosBusyUntil = performance.now() + 1400;
 }
 
 function saveSnapshot() {
@@ -1491,8 +2132,8 @@ function endMatch(winnerColor) {
 
 function openModIndex() {
   const container = document.getElementById('modListContainer');
-  container.innerHTML = MODIFIERS.map(m =>
-    `<div class="mod-list-item"><strong>${m.name}</strong><span>${m.desc}</span></div>`
+  container.innerHTML = MODIFIERS.map((m, i) =>
+    `<div class="mod-list-item"><strong>${MOD_ICONS[i] || ''} ${m.name}</strong><span>${m.desc}</span></div>`
   ).join('');
   document.getElementById('modIndexModal').classList.add('open');
 }
@@ -1503,6 +2144,13 @@ function closeModIndex() {
 
 function resetGame() {
   document.getElementById('gameOverModal').classList.remove('open');
+  fxEpoch++;
+  tileFx.clear();
+  chaosBusyUntil = 0;
+  const wrap = document.getElementById('boardWrap');
+  wrap.classList.remove('shake', 'shake-small', 'flip', 'sepia', 'iced', 'truce');
+  wrap.querySelectorAll('.chaos-banner').forEach(b => b.remove());
+  document.getElementById('piecesLayer').classList.remove('chaos-move');
   pieceElements.clear();
   document.getElementById('piecesLayer').innerHTML = '';
   document.getElementById('fxLayer').innerHTML = '';
