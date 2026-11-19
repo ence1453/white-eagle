@@ -36,7 +36,7 @@
   .vs { text-align:center; font-size:2rem; font-weight:900; color:var(--accent); }
 
   /* Fight */
-  .fight { width:100%; max-width:min(920px, calc((100vh - 210px) * 1.6)); display:flex; flex-direction:column; gap:10px; }
+  .fight { width:100%; max-width:min(620px, calc(100vh - 200px)); display:flex; flex-direction:column; gap:10px; }
   .hud { display:flex; gap:12px; align-items:center; }
   .side { flex:1; background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:8px 10px; }
   .side .nm { display:flex; justify-content:space-between; font-weight:700; font-size:.95rem; margin-bottom:5px; }
@@ -47,7 +47,7 @@
   .side.blue .bar i { background:linear-gradient(90deg,#60a5fa,#1d4ed8); margin-left:auto; }
   .clock { min-width:82px; text-align:center; font-weight:800; font-variant-numeric:tabular-nums; }
   .clock small { display:block; font-size:.68rem; color:var(--red); letter-spacing:1px; }
-  .stage { position:relative; width:100%; aspect-ratio:8/5; border-radius:12px; overflow:hidden; border:2px solid var(--border); background:#070a12; }
+  .stage { position:relative; width:100%; aspect-ratio:1/1; border-radius:12px; overflow:hidden; border:2px solid var(--border); background:#070a12; }
   canvas { width:100%; height:100%; display:block; }
   .controls { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
   .speed button.on { background:var(--accent); color:#111; }
@@ -106,9 +106,9 @@ const BALLS = [
   { id:'frost',   name:'Frost',   icon:'❄️', col:['#e0f2fe','#0284c7'], hp:100, desc:'Every hit chills and slows the enemy. The second chill freezes it for 1.6s: frozen balls can\'t fight back and take double damage, and Frost\'s next hit shatters the ice for a big bonus.' },
   { id:'venom',   name:'Venom',   icon:'🧪', col:['#d9f99d','#4d7c0f'], hp:100, desc:'Each hit adds a poison stack that deals damage every second. Weak early, deadly late.' },
   { id:'leech',   name:'Leech',   icon:'🩸', col:['#fecaca','#991b1b'], hp:90,  desc:'Heals for half of all damage it deals. Starts with 90 HP.' },
-  { id:'spark',   name:'Spark',   icon:'⚡', col:['#fef9c3','#ca8a04'], hp:100, desc:'Charges with every wall bounce. After 4 bounces it zaps the enemy with lightning from any distance.' },
+  { id:'spark',   name:'Spark',   icon:'⚡', col:['#fef9c3','#ca8a04'], hp:100, desc:'Charges with every wall bounce. After 6 bounces it zaps the enemy with lightning from any distance.' },
   { id:'blade',   name:'Blade',   icon:'🗡️', col:['#e2e8f0','#475569'], hp:100, desc:'A sword orbits around it and cuts the enemy on contact. It also knocks away bullets and defuses mines.' },
-  { id:'turret',  name:'Turret',  icon:'🎯', col:['#fde68a','#b45309'], hp:100, desc:'Fires a bullet at the enemy every 1.5s. Bullets bounce off one wall but hit lightly.' },
+  { id:'turret',  name:'Turret',  icon:'🎯', col:['#fde68a','#b45309'], hp:100, desc:'Fires a bullet at the enemy every 1.8s. Bullets bounce off one wall but hit lightly.' },
   { id:'bomber',  name:'Bomber',  icon:'💣', col:['#d4d4d8','#27272a'], hp:100, desc:'Drops a mine every 2.5s. Mines blow up when the enemy gets close, or after 3s. The blast hurts Bomber too.' },
   { id:'magnet',  name:'Magnet',  icon:'🧲', col:['#fecdd3','#be123c'], hp:100, desc:'Every 4s it pulls the enemy toward itself. A hit during the pull is a slam for triple damage.' },
   { id:'phantom', name:'Phantom', icon:'👻', col:['#f5f3ff','#7c3aed'], hp:100, desc:'Turns see-through every few seconds and can\'t be touched. Its first hit after reappearing deals bonus damage.' },
@@ -121,9 +121,9 @@ const BALLS = [
 const TEAM_COL = ['#ef4444', '#3b82f6'];
 
 /* ================== Constants ================== */
-const W = 800, H = 500, BASE_R = 22, SPEED = 290, STEP = 1 / 120;
+const W = 500, H = 500, BASE_R = 34, SPEED = 300, STEP = 1 / 120;
+const HOLE_R = 120, HOLE_CORE = 60, BLAST_R = 80, SNOW_MAX = 58, CHILD_R = 25;
 const SUDDEN_AT = 45;
-let SEEK = 1.3;      // how fast (rad/s) balls curve toward their opponent
 const JITTER = 0.18; // random spin added on wall bounces (rad)
 
 /* ================== State ================== */
@@ -161,8 +161,8 @@ function newMatch() {
   };
   const a0 = rand(-0.9, 0.9) + (Math.random() < 0.5 ? 0 : Math.PI);
   const a1 = rand(-0.9, 0.9) + (Math.random() < 0.5 ? 0 : Math.PI);
-  S.balls.push(makeBall(picks[0], 0, W * 0.25, H / 2 + rand(-60, 60), a0));
-  S.balls.push(makeBall(picks[1], 1, W * 0.75, H / 2 + rand(-60, 60), a1));
+  S.balls.push(makeBall(picks[0], 0, W * 0.22, H / 2 + rand(-80, 80), a0));
+  S.balls.push(makeBall(picks[1], 1, W * 0.78, H / 2 + rand(-80, 80), a1));
 }
 
 function enemies(b) { return S.balls.filter(o => o.alive && o.team !== b.team && !o.invis); }
@@ -224,8 +224,8 @@ function doSplit(p) {
   p.alive = false;
   const nx = -p.dy, ny = p.dx;
   for (const s of [-1, 1]) {
-    const c = makeBall(BALLS.findIndex(d => d.id === 'mitosis'), p.team, p.x + nx * 16 * s, p.y + ny * 16 * s, Math.atan2(ny * s, nx * s));
-    c.r = 16; c.hp = p.hp * 0.95; c.max = c.hp; c.isChild = true; c.split = true; c.spdMul = 1.2;
+    const c = makeBall(BALLS.findIndex(d => d.id === 'mitosis'), p.team, p.x + nx * CHILD_R * s, p.y + ny * CHILD_R * s, Math.atan2(ny * s, nx * s));
+    c.r = CHILD_R; c.hp = p.hp * 0.95; c.max = c.hp; c.isChild = true; c.split = true; c.spdMul = 1.2;
     c.x = Math.min(W - c.r, Math.max(c.r, c.x)); c.y = Math.min(H - c.r, Math.max(c.r, c.y));
     S.balls.push(c);
   }
@@ -236,9 +236,9 @@ function doSplit(p) {
 /* ================== Collisions ================== */
 function onCollide(att, vic) {
   if (att.frozenT > 0) return; // frozen balls can't hit back
-  let dmg = 7;
-  if (att.type === 'leech') dmg = 8;
-  if (att.type === 'snowball') dmg = 6 + (att.r - BASE_R) * 0.65;
+  let dmg = 8;
+  if (att.type === 'leech') dmg = 9;
+  if (att.type === 'snowball') dmg = 7 + (att.r - BASE_R) * 0.42;
   if (att.type === 'magnet' && att.pullT > 0) {
     dmg *= 2.2; att.pullT = 0;
     popText(vic.x, vic.y - 40, 'SLAM!', '#fb7185', 20); S.shake = Math.max(S.shake, 9);
@@ -247,7 +247,7 @@ function onCollide(att, vic) {
     dmg += 7; att.bonus = false;
     popText(vic.x, vic.y - 40, 'BOO!', '#c4b5fd', 20); S.shake = Math.max(S.shake, 7);
   }
-  if (att.type === 'frost') dmg = 8;
+  if (att.type === 'frost') dmg = 10;
   if (att.type === 'frost' && vic.frozenT > 0) {
     dmg += 7; vic.frozenT = 0;
     popText(vic.x, vic.y - 40, 'SHATTER!', '#bae6fd', 20); burst(vic.x, vic.y, '#e0f2fe', 26, 260, 3.5); S.shake = Math.max(S.shake, 9);
@@ -320,30 +320,30 @@ function ability(b, dt) {
   switch (b.type) {
     case 'ember':
       b.trailT -= dt;
-      if (b.trailT <= 0) { b.trailT = 0.05; S.trail.push({ x: b.x, y: b.y, t: 2.5, src: b, team: b.team }); }
+      if (b.trailT <= 0) { b.trailT = 0.05; S.trail.push({ x: b.x, y: b.y, t: 1.8, src: b, team: b.team }); }
       break;
     case 'spark':
-      if (b.charge >= 4) {
+      if (b.charge >= 6) {
         const tg = nearestEnemy(b);
         if (tg) {
           b.charge = 0;
           S.bolts.push({ x1: b.x, y1: b.y, x2: tg.x, y2: tg.y, t: 0.3 });
           burst(tg.x, tg.y, '#fef08a', 16, 220, 3);
           S.shake = Math.max(S.shake, 6);
-          deal(tg, 10, b, 'proj');
+          deal(tg, 8, b, 'proj');
         }
       }
       break;
     case 'blade': {
       b.angle += 5 * dt;
       const ca = Math.cos(b.angle), sa = Math.sin(b.angle);
-      const x1 = b.x + ca * (b.r + 2), y1 = b.y + sa * (b.r + 2), x2 = b.x + ca * (b.r + 32), y2 = b.y + sa * (b.r + 32);
+      const x1 = b.x + ca * (b.r + 2), y1 = b.y + sa * (b.r + 2), x2 = b.x + ca * (b.r + 36), y2 = b.y + sa * (b.r + 36);
       for (const e of enemies(b)) {
         if (segDist(e.x, e.y, x1, y1, x2, y2) < e.r + 3 && S.t - (b.cd[e.id] ?? -9) > 0.5) {
           b.cd[e.id] = S.t;
           burst(e.x - ca * e.r, e.y - sa * e.r, '#e2e8f0', 10, 200, 2.5);
           e.vx += -sa * 120; e.vy += ca * 120;
-          deal(e, 8, b, 'hit');
+          deal(e, 10, b, 'hit');
         }
       }
       for (const bu of S.bullets) if (bu.team !== b.team && segDist(bu.x, bu.y, x1, y1, x2, y2) < 8) { bu.dead = true; burst(bu.x, bu.y, '#fde68a', 6, 120, 2); }
@@ -353,7 +353,7 @@ function ability(b, dt) {
     case 'turret':
       b.t -= dt;
       if (b.t <= 0) {
-        b.t = 1.5;
+        b.t = 1.8;
         const tg = nearestEnemy(b);
         if (tg) {
           const a = Math.atan2(tg.y - b.y, tg.x - b.x);
@@ -390,7 +390,7 @@ function ability(b, dt) {
         const tg = nearestEnemy(b);
         if (!tg) { b.t = 0.5; break; }
         b.t = 5;
-        const hx = Math.min(W - 40, Math.max(40, tg.x + tg.vx * 0.35)), hy = Math.min(H - 40, Math.max(40, tg.y + tg.vy * 0.35));
+        const hx = Math.min(W - 50, Math.max(50, tg.x + tg.vx * 0.35)), hy = Math.min(H - 50, Math.max(50, tg.y + tg.vy * 0.35));
         S.holes.push({ x: hx, y: hy, t: 3.5, team: b.team, src: b, tick: 0, spin: 0 });
         popText(hx, hy - 30, 'VOID!', '#c4b5fd', 16);
       }
@@ -405,13 +405,13 @@ function ability(b, dt) {
           for (const e of enemies(b)) {
             let hit = false;
             for (let i = 0; i < pts.length - 1 && !hit; i++) hit = segDist(e.x, e.y, pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]) < e.r + 5;
-            if (hit) { burst(e.x, e.y, '#f9a8d4', 22, 260, 3); deal(e, 25, b, 'proj'); }
+            if (hit) { burst(e.x, e.y, '#f9a8d4', 22, 260, 3); deal(e, 18, b, 'proj'); }
           }
         }
       } else {
         b.t -= dt;
         if (b.t <= 0) {
-          b.t = 5.5;
+          b.t = 6;
           const tg = nearestEnemy(b);
           if (tg) { b.aimT = 0.8; b.aimAng = Math.atan2(tg.y - b.y, tg.x - b.x); }
           else b.t = 0.5;
@@ -424,8 +424,8 @@ function ability(b, dt) {
 function onWall(b) {
   const j = rand(-JITTER, JITTER), c = Math.cos(j), sn = Math.sin(j), vx = b.vx;
   b.vx = vx * c - b.vy * sn; b.vy = vx * sn + b.vy * c;
-  if (b.type === 'spark' && b.charge < 4) { b.charge++; burst(b.x, b.y, '#fde047', 4, 80, 2, 0.3); }
-  if (b.type === 'snowball' && b.r < 46) b.r = Math.min(46, b.r + 2.5);
+  if (b.type === 'spark' && b.charge < 6) { b.charge++; burst(b.x, b.y, '#fde047', 4, 80, 2, 0.3); }
+  if (b.type === 'snowball' && b.r < SNOW_MAX) b.r = Math.min(SNOW_MAX, b.r + 3);
 }
 
 /* ================== Simulation step ================== */
@@ -442,13 +442,13 @@ function step(dt) {
     if (b.chill > 0) { b.chillT -= dt; if (b.chillT <= 0) { b.chill--; b.chillT = 4; } }
     if (b.poison > 0) {
       b.poisonTick -= dt;
-      if (b.poisonTick <= 0) { b.poisonTick = 0.5; deal(b, b.poison * 0.23, b.poisonSrc, 'dot'); }
+      if (b.poisonTick <= 0) { b.poisonTick = 0.5; deal(b, b.poison * 0.27, b.poisonSrc, 'dot'); }
       b.poisonDecay -= dt;
       if (b.poisonDecay <= 0) { b.poison--; b.poisonDecay = 5; }
     }
     if (b.burnT > 0) {
       b.burnT -= dt; b.burnTick -= dt;
-      if (b.burnTick <= 0) { b.burnTick = 0.25; deal(b, 1, b.burnSrc, 'dot'); }
+      if (b.burnTick <= 0) { b.burnTick = 0.25; deal(b, 0.95, b.burnSrc, 'dot'); }
     }
     if (b.flash > 0) b.flash -= dt;
     if (!b.alive) continue;
@@ -464,17 +464,10 @@ function step(dt) {
       if (s < 1) { b.vx = b.dx; b.vy = b.dy; s = 1; }
       const ns = s + (target - s) * Math.min(1, dt * 2.5);
       b.vx *= ns / s; b.vy *= ns / s;
-      // Gently curve toward the nearest opponent so fights keep happening
-      const tg = nearestEnemy(b);
-      if (tg) {
-        const want = Math.atan2(tg.y - b.y, tg.x - b.x), cur = Math.atan2(b.vy, b.vx);
-        let diff = want - cur;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        const turn = Math.max(-SEEK * dt, Math.min(SEEK * dt, diff)) + (b.wob = (b.wob || 0) * 0.98 + rand(-0.02, 0.02)) * dt * 6;
-        const c = Math.cos(turn), sn = Math.sin(turn), vx = b.vx;
-        b.vx = vx * c - b.vy * sn; b.vy = vx * sn + b.vy * c;
-      }
+      // Small random wobble so bounce paths don't settle into repeating loops
+      b.wob = (b.wob || 0) * 0.98 + rand(-0.02, 0.02);
+      const turn = b.wob * dt * 6, c = Math.cos(turn), sn = Math.sin(turn), vx0 = b.vx;
+      b.vx = vx0 * c - b.vy * sn; b.vy = vx0 * sn + b.vy * c;
     }
     const sp = Math.hypot(b.vx, b.vy);
     if (sp > 1) { b.dx = b.vx / sp; b.dy = b.vy / sp; }
@@ -498,7 +491,7 @@ function step(dt) {
     for (const b of S.balls) {
       if (!b.alive || b.invis) continue;
       for (const p of S.trail) {
-        if (p.team !== b.team && Math.hypot(p.x - b.x, p.y - b.y) < b.r + 7) { b.burnT = 0.6; b.burnSrc = p.src; break; }
+        if (p.team !== b.team && Math.hypot(p.x - b.x, p.y - b.y) < b.r + 9) { b.burnT = 0.6; b.burnSrc = p.src; break; }
       }
     }
   }
@@ -507,13 +500,13 @@ function step(dt) {
   for (const bu of S.bullets) {
     bu.x += bu.vx * dt; bu.y += bu.vy * dt; bu.life -= dt;
     if (bu.life <= 0) bu.dead = true;
-    if (bu.x < 4 || bu.x > W - 4) { if (bu.bounces-- > 0) { bu.vx = -bu.vx; bu.x = Math.min(W - 4, Math.max(4, bu.x)); } else bu.dead = true; }
-    if (bu.y < 4 || bu.y > H - 4) { if (bu.bounces-- > 0) { bu.vy = -bu.vy; bu.y = Math.min(H - 4, Math.max(4, bu.y)); } else bu.dead = true; }
+    if (bu.x < 6 || bu.x > W - 6) { if (bu.bounces-- > 0) { bu.vx = -bu.vx; bu.x = Math.min(W - 6, Math.max(6, bu.x)); } else bu.dead = true; }
+    if (bu.y < 6 || bu.y > H - 6) { if (bu.bounces-- > 0) { bu.vy = -bu.vy; bu.y = Math.min(H - 6, Math.max(6, bu.y)); } else bu.dead = true; }
     if (bu.dead) continue;
     for (const b of S.balls) {
       if (!b.alive || b.invis || b.team === bu.team) continue;
       const d = Math.hypot(bu.x - b.x, bu.y - b.y);
-      if (d < b.r + 5) {
+      if (d < b.r + 6) {
         if (b.type === 'mirror') {
           const nx = (bu.x - b.x) / (d || 1), ny = (bu.y - b.y) / (d || 1);
           const dot = bu.vx * nx + bu.vy * ny;
@@ -524,7 +517,7 @@ function step(dt) {
           popText(b.x, b.y - b.r - 10, 'REFLECT', '#67e8f9', 12);
         } else {
           burst(bu.x, bu.y, '#fde68a', 8, 150, 2);
-          deal(b, 5, bu.src, 'proj');
+          deal(b, 4.5, bu.src, 'proj');
           bu.dead = true;
         }
         break;
@@ -546,8 +539,8 @@ function step(dt) {
       S.blasts.push({ x: m.x, y: m.y, t: 0.4 });
       S.shake = Math.max(S.shake, 10);
       for (const b of S.balls) {
-        if (!b.alive || Math.hypot(b.x - m.x, b.y - m.y) > 85 + b.r) continue;
-        if (b.team !== m.team) deal(b, 14, m.src, 'blast');
+        if (!b.alive || Math.hypot(b.x - m.x, b.y - m.y) > BLAST_R + b.r) continue;
+        if (b.team !== m.team) deal(b, 12, m.src, 'blast');
         else if (b.type === 'bomber') deal(b, 7, null, 'blast');
       }
     }
@@ -562,10 +555,10 @@ function step(dt) {
     for (const b of S.balls) {
       if (!b.alive || b.invis || b.team === h.team) continue;
       const d = Math.hypot(b.x - h.x, b.y - h.y) || 1;
-      if (d < 170) {
-        const f = 900 * (1 - d / 170);
+      if (d < HOLE_R) {
+        const f = 900 * (1 - d / HOLE_R);
         b.vx += (h.x - b.x) / d * f * dt; b.vy += (h.y - b.y) / d * f * dt;
-        if (d < 60 && tickNow) deal(b, 3.2, h.src, 'dot');
+        if (d < HOLE_CORE && tickNow) deal(b, 2.5, h.src, 'dot');
       }
     }
   }
@@ -656,9 +649,9 @@ function drawBall(b) {
   }
   // spark charge pips
   if (b.type === 'spark') {
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 6; i++) {
       ctx.fillStyle = i < b.charge ? '#fde047' : 'rgba(255,255,255,.18)';
-      ctx.beginPath(); ctx.arc(b.x - 9 + i * 6, b.y + b.r + 8, 2.2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(b.x - 20 + i * 8, b.y + b.r + 9, 3, 0, Math.PI * 2); ctx.fill();
     }
   }
   // blade sword
@@ -668,7 +661,7 @@ function drawBall(b) {
     ctx.strokeStyle = '#78350f'; ctx.lineWidth = 6;
     ctx.beginPath(); ctx.moveTo(b.x + ca * (b.r + 2), b.y + sa * (b.r + 2)); ctx.lineTo(b.x + ca * (b.r + 8), b.y + sa * (b.r + 8)); ctx.stroke();
     ctx.strokeStyle = '#f1f5f9'; ctx.lineWidth = 4; ctx.shadowColor = '#e2e8f0'; ctx.shadowBlur = 8;
-    ctx.beginPath(); ctx.moveTo(b.x + ca * (b.r + 8), b.y + sa * (b.r + 8)); ctx.lineTo(b.x + ca * (b.r + 32), b.y + sa * (b.r + 32)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(b.x + ca * (b.r + 8), b.y + sa * (b.r + 8)); ctx.lineTo(b.x + ca * (b.r + 36), b.y + sa * (b.r + 36)); ctx.stroke();
     ctx.shadowBlur = 0;
   }
   ctx.restore();
@@ -683,8 +676,8 @@ function draw() {
   ctx.setTransform(sx, 0, 0, sy, 0, 0);
   ctx.fillStyle = '#080b14'; ctx.fillRect(0, 0, W, H);
   ctx.strokeStyle = 'rgba(255,255,255,.04)'; ctx.lineWidth = 1;
-  for (let x = 40; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
-  for (let y = 40; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+  for (let x = 50; x < W; x += 50) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+  for (let y = 50; y < H; y += 50) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
   if (S.sudden > 1) { ctx.fillStyle = `rgba(239,68,68,${0.05 + 0.04 * Math.sin(S.t * 6)})`; ctx.fillRect(0, 0, W, H); }
 
   ctx.save();
@@ -692,29 +685,29 @@ function draw() {
 
   // Fire trail
   for (const p of S.trail) {
-    const a = Math.min(1, p.t / 2.5);
+    const a = Math.min(1, p.t / 1.8);
     ctx.fillStyle = `rgba(249,115,22,${0.35 * a})`;
-    ctx.beginPath(); ctx.arc(p.x, p.y, 7 + (1 - a) * 4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(p.x, p.y, 9 + (1 - a) * 5, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = `rgba(253,224,71,${0.45 * a})`;
-    ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2); ctx.fill();
   }
   // Black holes
   for (const h of S.holes) {
     const life = Math.min(1, h.t / 0.4, (3.5 - h.t) / 0.3 + 0.2);
-    const g = ctx.createRadialGradient(h.x, h.y, 2, h.x, h.y, 170);
+    const g = ctx.createRadialGradient(h.x, h.y, 2, h.x, h.y, HOLE_R);
     g.addColorStop(0, `rgba(0,0,0,${0.95 * life})`); g.addColorStop(0.25, `rgba(76,29,149,${0.6 * life})`); g.addColorStop(1, 'rgba(76,29,149,0)');
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(h.x, h.y, 170, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(h.x, h.y, HOLE_R, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = `rgba(196,181,253,${0.7 * life})`; ctx.lineWidth = 2;
-    for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(h.x, h.y, 22 + i * 14, h.spin + i, h.spin + i + 2.2); ctx.stroke(); }
-    ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(h.x, h.y, 14 * life, 0, Math.PI * 2); ctx.fill();
+    for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(h.x, h.y, 26 + i * 16, h.spin + i, h.spin + i + 2.2); ctx.stroke(); }
+    ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(h.x, h.y, 18 * life, 0, Math.PI * 2); ctx.fill();
   }
   // Mines
   for (const m of S.mines) {
-    if (m.t < 0.6) { ctx.strokeStyle = `rgba(239,68,68,${0.5 + 0.3 * Math.sin(m.t * 40)})`; ctx.lineWidth = 2; ctx.setLineDash([6, 6]); ctx.beginPath(); ctx.arc(m.x, m.y, 85, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
-    ctx.fillStyle = '#27272a'; ctx.beginPath(); ctx.arc(m.x, m.y, 9, 0, Math.PI * 2); ctx.fill();
+    if (m.t < 0.6) { ctx.strokeStyle = `rgba(239,68,68,${0.5 + 0.3 * Math.sin(m.t * 40)})`; ctx.lineWidth = 2; ctx.setLineDash([6, 6]); ctx.beginPath(); ctx.arc(m.x, m.y, BLAST_R, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
+    ctx.fillStyle = '#27272a'; ctx.beginPath(); ctx.arc(m.x, m.y, 12, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = TEAM_COL[m.team]; ctx.lineWidth = 2; ctx.stroke();
     ctx.fillStyle = Math.sin(m.t * (m.t < 0.6 ? 40 : 12)) > 0 ? '#ef4444' : '#7f1d1d';
-    ctx.beginPath(); ctx.arc(m.x, m.y, 3.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(m.x, m.y, 4.5, 0, Math.PI * 2); ctx.fill();
   }
   // Blast rings
   for (const x of (S.blasts || [])) {
@@ -742,7 +735,7 @@ function draw() {
   // Bullets
   for (const bu of S.bullets) {
     ctx.fillStyle = '#fde047'; ctx.shadowColor = TEAM_COL[bu.team]; ctx.shadowBlur = 10;
-    ctx.beginPath(); ctx.arc(bu.x, bu.y, 4.5, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+    ctx.beginPath(); ctx.arc(bu.x, bu.y, 6, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
   }
   // Laser beams
   for (const x of S.beams) {
@@ -924,8 +917,7 @@ window.__orb = {
     while (!S.over && S.t < maxT) { step(STEP); n++; }
     return { winner: S.winner, t: S.t, hp0: teamHp(0), hp1: teamHp(1) };
   },
-  get S() { return S; },
-  setSeek(v) { SEEK = v; }
+  get S() { return S; }
 };
 </script>
 </body>
