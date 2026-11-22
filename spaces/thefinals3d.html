@@ -1109,6 +1109,140 @@ kbd {
   text-align: left;
 }
 
+/* ================= HACK PANEL ================= */
+#hack-panel {
+  position: fixed;
+  top: 122px;
+  right: 24px;
+  z-index: 27;
+  width: 340px;
+  max-height: calc(100vh - 300px);
+  overflow-y: auto;
+  background: rgba(10, 12, 20, 0.95);
+  border: 1px solid rgba(0, 255, 140, 0.35);
+  border-top: 4px solid #00ff8c;
+  padding: 12px 16px 10px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.8), 0 0 24px rgba(0, 255, 140, 0.15);
+  font-family: 'Chakra Petch', 'Inter', sans-serif;
+  pointer-events: auto;
+  user-select: none;
+}
+.hp-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+  gap: 12px;
+  white-space: nowrap;
+}
+.hp-title h3 {
+  font-family: 'Teko', sans-serif;
+  font-size: 1.7rem;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  color: #00ff8c;
+}
+.hp-title span {
+  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.55);
+  letter-spacing: 0.08em;
+}
+.hack-row {
+  padding: 8px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.hack-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.hack-name {
+  font-weight: 800;
+  font-size: 0.9rem;
+  letter-spacing: 0.06em;
+}
+.hack-desc {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 3px;
+  line-height: 1.35;
+}
+.hack-switch {
+  position: relative;
+  width: 44px;
+  height: 22px;
+  flex: none;
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 11px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.hack-switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: left 0.15s;
+}
+.hack-switch.on { background: #00c96f; }
+.hack-switch.on::after { left: 25px; }
+.hack-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+.hack-sub input[type=range] { flex: 1; accent-color: #00ff8c; cursor: pointer; }
+.hack-sub input[type=checkbox] { accent-color: #00ff8c; cursor: pointer; }
+.hack-sub output {
+  min-width: 38px;
+  text-align: right;
+  font-weight: 800;
+  color: #00ff8c;
+}
+.hack-sub.disabled { opacity: 0.4; pointer-events: none; }
+.hack-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 10px;
+  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.55);
+}
+.hack-footer button {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.hack-footer button:hover { border-color: #00ff8c; color: #00ff8c; }
+#hack-status {
+  position: absolute;
+  bottom: 205px;
+  left: 26px;
+  background: rgba(10, 12, 20, 0.85);
+  border-left: 4px solid #00ff8c;
+  color: #00ff8c;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 4px 10px;
+}
+#hack-status.lock-on { box-shadow: 0 0 12px rgba(0, 255, 140, 0.5); }
+
 </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
@@ -1202,6 +1336,9 @@ kbd {
       </div>
     </div>
 
+    <!-- Active hacks badge -->
+    <div id="hack-status" class="hidden"></div>
+
     <!-- Bottom Left: Contestant Health & Build Status -->
     <div id="bottom-left-hud">
       <div class="contestant-card">
@@ -1221,6 +1358,7 @@ kbd {
           <span><kbd>E</kbd> Interact</span>
           <span><kbd>TAB</kbd> Scoreboard</span>
           <span><kbd>M</kbd> Change Build</span>
+          <span><kbd>H</kbd> Hack Panel</span>
         </div>
       </div>
     </div>
@@ -1262,6 +1400,59 @@ kbd {
           <div class="slot-cd" id="slot-q-cd"></div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ================= HACK PANEL (press H) ================= -->
+  <div id="hack-panel" class="hidden">
+    <div class="hp-title">
+      <h3>HACK PANEL</h3>
+      <span>PRESS H TO CLOSE</span>
+    </div>
+    <div class="hack-row">
+      <div class="hack-head">
+        <span class="hack-name">AIMLOCK</span>
+        <div class="hack-switch" data-hack="aimlock"></div>
+      </div>
+      <div class="hack-desc">Snaps your aim to the head of the nearest enemy you can see.</div>
+      <div class="hack-sub" data-needs="aimlock">
+        <span>Strength</span>
+        <input type="range" id="hack-aim-strength" min="1" max="10" step="1">
+        <output id="hack-aim-strength-val"></output>
+      </div>
+      <label class="hack-sub" data-needs="aimlock">
+        <input type="checkbox" id="hack-aim-ads"> Only while aiming (right mouse)
+      </label>
+    </div>
+    <div class="hack-row">
+      <div class="hack-head">
+        <span class="hack-name">WALLHACKS</span>
+        <div class="hack-switch" data-hack="wallhack"></div>
+      </div>
+      <div class="hack-desc">Shows every enemy through walls with a glowing box, plus their name and health from any distance.</div>
+    </div>
+    <div class="hack-row">
+      <div class="hack-head">
+        <span class="hack-name">FLYING</span>
+        <div class="hack-switch" data-hack="fly"></div>
+      </div>
+      <div class="hack-desc">Turns off gravity. Hold <kbd>SPACE</kbd> to rise and <kbd>C</kbd> to sink.</div>
+    </div>
+    <div class="hack-row">
+      <div class="hack-head">
+        <span class="hack-name">SPEED</span>
+        <div class="hack-switch" data-hack="speedOn"></div>
+      </div>
+      <div class="hack-desc">Multiplies how fast you run, sprint, slide and fly.</div>
+      <div class="hack-sub" data-needs="speedOn">
+        <span>Multiplier</span>
+        <input type="range" id="hack-speed" min="1.25" max="5" step="0.25">
+        <output id="hack-speed-val"></output>
+      </div>
+    </div>
+    <div class="hack-footer">
+      <span>Settings are saved</span>
+      <button id="hack-reset">TURN ALL OFF</button>
     </div>
   </div>
 
@@ -5125,6 +5316,8 @@ class PlayerController {
       this.slideTimer -= dt;
       moveSpd = this.sprintSpeed * 1.28;
     }
+    if (window.hacks) moveSpd *= window.hacks.speedMultiplier();
+    const hackFly = !!(window.hacks && window.hacks.fly);
 
     if (this.chargeSlamTimer > 0) {
       this.chargeSlamTimer -= dt;
@@ -5215,7 +5408,7 @@ class PlayerController {
       this.velocity.z = moveDir.z * moveSpd;
     }
 
-    if (this.keys['Space'] && this.isGrounded) {
+    if (this.keys['Space'] && this.isGrounded && !hackFly) {
       const jumpImpulse = (window.game && window.game.activeEvent === 'LOW_GRAVITY') ? 16.5 : 11.4;
       this.velocity.y = jumpImpulse;
       this.isGrounded = false;
@@ -5230,7 +5423,14 @@ class PlayerController {
     }
 
     const grav = (window.game && window.game.activeEvent === 'LOW_GRAVITY') ? 11.0 : 25.0;
-    if (!this.grappleTarget) {
+    if (hackFly && !this.grappleTarget) {
+      // Hack: flying ignores gravity, jump pads and jumping. Space rises, C / Ctrl sinks.
+      const up = this.keys['Space'] ? 1 : 0;
+      const down = (this.keys['KeyC'] || this.keys['ControlLeft']) ? 1 : 0;
+      this.velocity.y = (up - down) * Math.max(this.speed, moveSpd) * 0.9;
+      if (this.position.y > 110 && this.velocity.y > 0) this.velocity.y = 0; // stay inside the stadium
+      this.slideTimer = 0;
+    } else if (!this.grappleTarget) {
       this.velocity.y -= grav * dt;
     }
 
@@ -5268,6 +5468,9 @@ class PlayerController {
       this.weaponGroup.position.x *= 0.85;
       this.weaponGroup.position.y *= 0.85;
     }
+
+    // Hack: aimlock steers yaw/pitch toward the locked target before the camera is placed
+    if (window.hacks) window.hacks.applyAimlock(this, dt);
 
     // Update Camera transform — explicitly set rotation.z = 0 so the horizon is never slanted!
     let shakeX = 0;
@@ -5614,7 +5817,7 @@ class FinalsGame {
       const headTop = bot.mesh.position.clone().add(new THREE.Vector3(0, 3.2 * bot.scaleY, 0));
       const toBot = new THREE.Vector3().subVectors(headTop, this.camera.position);
       const dist = toBot.length();
-      if (dist > 85) return;
+      if (dist > (window.hacks && window.hacks.wallhack ? 400 : 85)) return;
       if (camDir.dot(toBot.clone().normalize()) <= 0.1) return;
 
       const projected = headTop.project(this.camera);
@@ -5867,6 +6070,7 @@ class FinalsGame {
       this.world.update(dt);
       this.entities.update(dt, this.player, this);
       this.player.update(dt);
+      if (window.hacks) window.hacks.update(dt);
       this.updateWaypointsHUD();
       this.updateEnemyBarsHUD();
     } else {
@@ -5888,6 +6092,204 @@ window.addEventListener('DOMContentLoaded', () => {
   window.game = new FinalsGame();
 });
 
+</script>
+<script>
+// ====== js/hacks.js ======
+// Hack panel: aimlock, wallhacks, flying and speed. Press H in a match to open it.
+(function () {
+  const SAVE_KEY = 'finals3dHacks';
+  const DEFAULTS = { aimlock: false, aimStrength: 6, aimAdsOnly: false, wallhack: false, fly: false, speedOn: false, speed: 2 };
+
+  const hacks = Object.assign({}, DEFAULTS);
+  try { Object.assign(hacks, JSON.parse(localStorage.getItem(SAVE_KEY) || '{}')); } catch (e) {}
+
+  const panel = document.getElementById('hack-panel');
+  const status = document.getElementById('hack-status');
+  const strengthInput = document.getElementById('hack-aim-strength');
+  const strengthVal = document.getElementById('hack-aim-strength-val');
+  const adsInput = document.getElementById('hack-aim-ads');
+  const speedInput = document.getElementById('hack-speed');
+  const speedVal = document.getElementById('hack-speed-val');
+
+  let aimTarget = null;
+
+  function save() {
+    try {
+      const out = {};
+      Object.keys(DEFAULTS).forEach(k => { out[k] = hacks[k]; });
+      localStorage.setItem(SAVE_KEY, JSON.stringify(out));
+    } catch (e) {}
+  }
+
+  function syncUI() {
+    panel.querySelectorAll('.hack-switch').forEach(sw => sw.classList.toggle('on', !!hacks[sw.dataset.hack]));
+    panel.querySelectorAll('[data-needs]').forEach(el => el.classList.toggle('disabled', !hacks[el.dataset.needs]));
+    strengthInput.value = hacks.aimStrength;
+    strengthVal.textContent = hacks.aimStrength;
+    adsInput.checked = !!hacks.aimAdsOnly;
+    speedInput.value = hacks.speed;
+    speedVal.textContent = `${Number(hacks.speed).toFixed(2)}x`;
+
+    const tags = [];
+    if (hacks.aimlock) tags.push(aimTarget ? 'AIMLOCK [LOCKED]' : 'AIMLOCK');
+    if (hacks.wallhack) tags.push('WALLHACK');
+    if (hacks.fly) tags.push('FLY');
+    if (hacks.speedOn) tags.push(`SPEED ${Number(hacks.speed).toFixed(2)}x`);
+    status.textContent = tags.length ? `HACKS: ${tags.join(' • ')}` : '';
+    status.classList.toggle('hidden', tags.length === 0);
+    status.classList.toggle('lock-on', !!aimTarget);
+  }
+
+  function isOpen() { return !panel.classList.contains('hidden'); }
+
+  function openPanel() {
+    if (!window.game || !window.game.inMatch) return;
+    panel.classList.remove('hidden');
+    if (document.pointerLockElement) document.exitPointerLock();
+    syncUI();
+  }
+
+  function closePanel() {
+    panel.classList.add('hidden');
+  }
+
+  // Switches, sliders and checkbox
+  panel.querySelectorAll('.hack-switch').forEach(sw => {
+    sw.addEventListener('click', () => {
+      const key = sw.dataset.hack;
+      hacks[key] = !hacks[key];
+      if (key === 'aimlock' && !hacks.aimlock) aimTarget = null;
+      if (key === 'fly' && !hacks.fly && window.game) window.game.player.velocity.y = 0;
+      save();
+      syncUI();
+    });
+  });
+  strengthInput.addEventListener('input', () => { hacks.aimStrength = Number(strengthInput.value); save(); syncUI(); });
+  adsInput.addEventListener('change', () => { hacks.aimAdsOnly = adsInput.checked; save(); syncUI(); });
+  speedInput.addEventListener('input', () => { hacks.speed = Number(speedInput.value); save(); syncUI(); });
+  document.getElementById('hack-reset').addEventListener('click', () => {
+    hacks.aimlock = false; hacks.wallhack = false; hacks.fly = false; hacks.speedOn = false;
+    aimTarget = null;
+    save();
+    syncUI();
+  });
+
+  // Clicks inside the panel must not grab the mouse or fire the gun
+  ['mousedown', 'mouseup', 'click', 'contextmenu'].forEach(type => {
+    panel.addEventListener(type, e => e.stopPropagation());
+  });
+  // Clicking back into the game closes the panel (the game then re-locks the mouse)
+  window.addEventListener('mousedown', e => {
+    if (isOpen() && !panel.contains(e.target)) closePanel();
+  }, true);
+
+  window.addEventListener('keydown', e => {
+    if (e.code !== 'KeyH' || e.repeat) return;
+    if (!window.game || !window.game.inMatch) return;
+    if (isOpen()) closePanel(); else openPanel();
+  });
+
+  // ---------- Wallhack boxes ----------
+  const espGeo = new THREE.BoxGeometry(1.35, 2.95, 1.35);
+  const espEdges = new THREE.EdgesGeometry(espGeo);
+  const noRaycast = () => {};
+
+  function ensureEsp(bot) {
+    if (bot.espGroup) return bot.espGroup;
+    const color = TEAMS[bot.team].hex;
+    const group = new THREE.Group();
+    const fill = new THREE.Mesh(espGeo, new THREE.MeshBasicMaterial({
+      color, transparent: true, opacity: 0.22, depthTest: false, depthWrite: false
+    }));
+    const lines = new THREE.LineSegments(espEdges, new THREE.LineBasicMaterial({
+      color, transparent: true, opacity: 0.95, depthTest: false, depthWrite: false
+    }));
+    [fill, lines].forEach(o => {
+      o.renderOrder = 999;
+      o.raycast = noRaycast; // never block or count as a hit for the player's shots
+    });
+    group.add(fill, lines);
+    group.position.y = 1.47 * bot.scaleY;
+    group.scale.set(bot.scaleY, bot.scaleY, bot.scaleY);
+    group.visible = false;
+    bot.mesh.add(group);
+    bot.espGroup = group;
+    return group;
+  }
+
+  // ---------- Aimlock ----------
+  function headPos(bot) {
+    return bot.mesh.position.clone().add(new THREE.Vector3(0, 2.52 * bot.scaleY, 0));
+  }
+
+  function angleTo(player, eye, target) {
+    const d = new THREE.Vector3().subVectors(target, eye);
+    const yaw = Math.atan2(-d.x, -d.z);
+    const pitch = Math.atan2(d.y, Math.hypot(d.x, d.z));
+    let dy = yaw - player.yaw;
+    while (dy > Math.PI) dy -= Math.PI * 2;
+    while (dy < -Math.PI) dy += Math.PI * 2;
+    return { yaw, pitch, dYaw: dy, dPitch: pitch - player.pitch, dist: d.length() };
+  }
+
+  function validTarget(bot, player, eye, maxAngle) {
+    if (!bot || !bot.alive || bot.team === 0) return null;
+    const head = headPos(bot);
+    const a = angleTo(player, eye, head);
+    if (a.dist > 140) return null;
+    if (Math.hypot(a.dYaw, a.dPitch) > maxAngle) return null;
+    if (!window.game.entities.hasLineOfSight(eye, head)) return null;
+    return a;
+  }
+
+  hacks.applyAimlock = function (player, dt) {
+    if (!hacks.aimlock || !player.alive || !window.game) { aimTarget = null; return; }
+    if (hacks.aimAdsOnly && !player.rightMouseDown) { aimTarget = null; return; }
+    const eye = player.position.clone().add(new THREE.Vector3(0, player.eyeHeight, 0));
+
+    // Keep the current target while it stays visible, otherwise pick the one closest to the crosshair
+    let lock = validTarget(aimTarget, player, eye, 1.4);
+    if (!lock) {
+      aimTarget = null;
+      let best = Infinity;
+      for (const bot of window.game.entities.bots) {
+        const a = validTarget(bot, player, eye, 0.9);
+        if (!a) continue;
+        const score = Math.hypot(a.dYaw, a.dPitch) * 40 + a.dist * 0.15;
+        if (score < best) { best = score; aimTarget = bot; lock = a; }
+      }
+    }
+    if (!lock) return;
+
+    // Strength 10 snaps instantly, lower values glide onto the target
+    const k = hacks.aimStrength >= 10 ? 1 : Math.min(1, dt * hacks.aimStrength * 3.2);
+    player.yaw += lock.dYaw * k;
+    player.pitch += lock.dPitch * k;
+    player.pitch = Math.max(-Math.PI * 0.47, Math.min(Math.PI * 0.47, player.pitch));
+  };
+
+  hacks.speedMultiplier = function () {
+    return hacks.speedOn ? hacks.speed : 1;
+  };
+
+  // ---------- Per-frame update ----------
+  let statusTimer = 0;
+  hacks.update = function (dt) {
+    const game = window.game;
+    if (!game) return;
+    game.entities.bots.forEach(bot => {
+      const esp = ensureEsp(bot);
+      esp.visible = hacks.wallhack && bot.alive && bot.team !== 0;
+    });
+    if (aimTarget && !aimTarget.alive) aimTarget = null;
+    statusTimer -= dt;
+    if (statusTimer <= 0) { statusTimer = 0.15; syncUI(); }
+    if (!game.inMatch && isOpen()) closePanel();
+  };
+
+  window.hacks = hacks;
+  syncUI();
+})();
 </script>
 </body>
 
